@@ -1,0 +1,89 @@
+# ----------------------------------------
+# 📦 Node & Bun dependencies
+# ----------------------------------------
+node_modules/
+.bun/
+bun.lockb
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ----------------------------------------
+# 🏗️ Build outputs
+# ----------------------------------------
+dist/
+build/
+out/
+.vite/
+.vitepress/
+vite.config.ts.timestamp-*
+vite.config.js.timestamp-*
+
+# ----------------------------------------
+# ⚙️ Environment & local configs
+# ----------------------------------------
+.env
+.env.*.local
+!.env.example
+
+# ----------------------------------------
+# 🧪 Testing
+# ----------------------------------------
+coverage/
+*.lcov
+jest-results.json
+
+# ----------------------------------------
+# 🧰 Editor / IDE settings
+# ----------------------------------------
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# ----------------------------------------
+# 💅 TypeScript
+# ----------------------------------------
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# ----------------------------------------
+# 🪞 OS & Misc
+# ----------------------------------------
+.DS_Store
+Thumbs.db
+*.log
+*.lock
+*.tmp
+
+# ----------------------------------------
+# 🪄 Lovable specific
+# ----------------------------------------
+# Lovable temporary build artifacts
+.lovable/
+# Lovable preview cache
+.lovable-preview/
+# Tagger metadata
+lovable-tagger.json
+
+# ----------------------------------------
+# 🧱 Shadcn UI generated files
+# ----------------------------------------
+# (Ignore component generation cache)
+components.json
+
+# ----------------------------------------
+# 🔐 Security
+# ----------------------------------------
+# Private keys, credentials, and certs
+*.pem
+*.key
+*.crt
+*.p12
+
+# ----------------------------------------
+# 🧩 Optional: if you use local SQLite or dev DBs
+# ----------------------------------------
+*.db
+*.sqlite3

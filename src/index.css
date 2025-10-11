@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Fulani-inspired warm palette */
+    --background: 30 15% 8%;
+    --foreground: 40 80% 95%;
+
+    --card: 30 20% 12%;
+    --card-foreground: 40 80% 95%;
+
+    --popover: 30 25% 10%;
+    --popover-foreground: 40 80% 95%;
+
+    /* Rich Gold - Fulani jewelry inspired */
+    --primary: 45 75% 55%;
+    --primary-foreground: 30 15% 8%;
+
+    /* Burnt Sienna - desert warmth */
+    --secondary: 15 75% 60%;
+    --secondary-foreground: 30 15% 8%;
+
+    --muted: 30 20% 18%;
+    --muted-foreground: 40 40% 70%;
+
+    /* Deep Terracotta accent */
+    --accent: 12 80% 45%;
+    --accent-foreground: 40 80% 95%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 40 80% 95%;
+
+    /* Forest Green for success states */
+    --success: 95 50% 25%;
+    --success-foreground: 40 80% 95%;
+
+    --border: 30 20% 22%;
+    --input: 30 20% 18%;
+    --ring: 45 75% 55%;
+
+    --radius: 0.75rem;
+
+    /* Gradient definitions */
+    --gradient-hero: linear-gradient(135deg, hsl(45 75% 55%) 0%, hsl(15 75% 60%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(30 25% 10%) 0%, hsl(30 20% 12%) 100%);
+    --gradient-overlay: linear-gradient(180deg, transparent 0%, hsl(30 15% 8% / 0.9) 100%);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+}
+
+@layer utilities {
+  /* Fulani pattern background */
+  .pattern-bg {
+    background-image: 
+      repeating-linear-gradient(45deg, transparent, transparent 35px, hsl(45 75% 55% / 0.03) 35px, hsl(45 75% 55% / 0.03) 70px),
+      repeating-linear-gradient(-45deg, transparent, transparent 35px, hsl(15 75% 60% / 0.03) 35px, hsl(15 75% 60% / 0.03) 70px);
+  }
+
+  .hero-gradient {
+    background: var(--gradient-hero);
+  }
+
+  .card-gradient {
+    background: var(--gradient-card);
+  }
+
+  .text-gradient {
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
