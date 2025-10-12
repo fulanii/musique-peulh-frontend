@@ -72,6 +72,12 @@ const MusicPlayer = ({
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
       setDuration(audioRef.current.duration);
+      // If the parent says we should be playing, start playback now that metadata is loaded
+      if (isPlaying) {
+        audioRef.current.play().catch(() => {
+          // ignore play promise errors (autoplay restrictions)
+        });
+      }
     }
   };
 

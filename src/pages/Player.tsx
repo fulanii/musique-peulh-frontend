@@ -59,6 +59,7 @@ const Player = () => {
     const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
     const nextIndex = (currentIndex + 1) % songs.length;
     setCurrentSong(songs[nextIndex]);
+    setIsPlaying(true);
   };
 
   const handlePrevious = () => {
@@ -66,6 +67,7 @@ const Player = () => {
     const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
     const prevIndex = currentIndex === 0 ? songs.length - 1 : currentIndex - 1;
     setCurrentSong(songs[prevIndex]);
+    setIsPlaying(true);
   };
 
   return (
