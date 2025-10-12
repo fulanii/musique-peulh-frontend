@@ -1,32 +1,32 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Music2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Music2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
-    username: '',
-    password: '',
-    confirmPassword: '',
+    email: "",
+    username: "",
+    password: "",
+    confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error("Passwords do not match");
       return;
     }
 
     if (formData.password.length < 8) {
-      toast.error('Password must be at least 8 characters');
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
@@ -37,11 +37,34 @@ const Register = () => {
         username: formData.username,
         password: formData.password,
       });
-      
-      toast.success('Registration successful! Please verify your email.');
-      navigate('/verify-email', { state: { email: formData.email } });
+
+      toast.success("Registration successful! Please verify your email.");
+      navigate("/verify-email", { state: { email: formData.email } });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Registration failed');
+      let msg = "Registration failed";
+      if (error instanceof Error) {
+        // If backend attached parsed data, prefer field-level messages
+        const anyErr = error as any;
+        if (anyErr.data && typeof anyErr.data === "object") {
+          // Prefer username/email field messages if provided
+          if (anyErr.data.username) {
+            msg = Array.isArray(anyErr.data.username)
+              ? anyErr.data.username.join(" ")
+              : String(anyErr.data.username);
+          } else if (anyErr.data.email) {
+            msg = Array.isArray(anyErr.data.email)
+              ? anyErr.data.email.join(" ")
+              : String(anyErr.data.email);
+          } else if (anyErr.data.detail) {
+            msg = String(anyErr.data.detail);
+          } else {
+            msg = error.message;
+          }
+        } else {
+          msg = error.message;
+        }
+      }
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -53,10 +76,14 @@ const Register = () => {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <Music2 className="w-8 h-8 text-primary" />
-            <span className="text-2xl font-bold text-gradient">MusiquePeulh</span>
+            <span className="text-2xl font-bold text-gradient">
+              MusiquePeulh
+            </span>
           </Link>
           <h1 className="text-3xl font-bold mb-2">Create Your Account</h1>
-          <p className="text-muted-foreground">Join the Fulani music community</p>
+          <p className="text-muted-foreground">
+            Join the Fulani music community
+          </p>
         </div>
 
         <div className="card-gradient p-8 rounded-xl border border-border">
@@ -68,7 +95,9 @@ const Register = () => {
                 type="email"
                 placeholder="you@example.com"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 required
                 className="bg-background/50"
               />
@@ -81,7 +110,9 @@ const Register = () => {
                 type="text"
                 placeholder="Choose a username"
                 value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value })
+                }
                 required
                 className="bg-background/50"
               />
@@ -94,7 +125,9 @@ const Register = () => {
                 type="password"
                 placeholder="At least 8 characters"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
                 required
                 className="bg-background/50"
               />
@@ -107,24 +140,31 @@ const Register = () => {
                 type="password"
                 placeholder="Re-enter your password"
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, confirmPassword: e.target.value })
+                }
                 required
                 className="bg-background/50"
               />
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full hero-gradient text-primary-foreground hover:opacity-90"
               disabled={loading}
             >
-              {loading ? 'Creating Account...' : 'Sign Up'}
+              {loading ? "Creating Account..." : "Sign Up"}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Already have an account? </span>
-            <Link to="/login" className="text-primary hover:underline font-medium">
+            <span className="text-muted-foreground">
+              Already have an account?{" "}
+            </span>
+            <Link
+              to="/login"
+              className="text-primary hover:underline font-medium"
+            >
               Sign in
             </Link>
           </div>

@@ -74,7 +74,7 @@ const ManageSongs = () => {
                   </td>
                   <td className="py-3 text-muted-foreground">{song.artist_name}</td>
                   <td className="py-3 text-muted-foreground">{song.duration}</td>
-                  <td className="py-3 text-muted-foreground">{formatDate(song.created_at)}</td>
+                  <td className="py-3 text-muted-foreground">{formatDate(song.upload_date)}</td>
                 </tr>
               ))}
             </tbody>

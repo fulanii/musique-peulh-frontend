@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://api.musiquepeulh.com';
+const API_BASE_URL = "http://192.168.1.66:8000"; // 'https://api.musiquepeulh.com';
 
 export interface RegisterData {
   email: string;
@@ -20,8 +20,7 @@ export interface VerifyEmailData {
 export interface SongUploadData {
   title: string;
   artist_name: string;
-  duration?: string;
-  mp3_file: File;
+  audio_file: File;
   cover_image?: File;
 }
 
@@ -30,15 +29,16 @@ export interface Song {
   title: string;
   artist_name: string;
   duration: string;
-  mp3_file: string;
-  cover_image?: string;
-  uploaded_by: number;
-  created_at: string;
+  audio_file: string;
+  cover_image: string;
+  uploaded_by: string;
+  upload_date: string;
 }
 
 export interface AuthTokens {
   access: string;
   refresh: string;
+  user_data: object;
 }
 
 export interface User {
@@ -47,25 +47,27 @@ export interface User {
   username: string;
   is_staff: boolean;
   is_superuser: boolean;
-  date_joined: string;
+  is_verified: boolean;
+  is_active: boolean;
 }
 
 class ApiService {
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
+  public API_BASE_URL = "http://192.168.1.66:8000"; // 'https://api.musiquepeulh.com';
 
   private getHeaders(includeAuth = false): HeadersInit {
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
-    
+
     if (includeAuth) {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem("access_token");
       if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        headers["Authorization"] = `Bearer ${token}`;
       }
     }
-    
+
     return headers;
   }
 
@@ -79,8 +81,8 @@ class ApiService {
           ...response,
           headers: {
             ...response.headers,
-            'Authorization': `Bearer ${newToken}`
-          }
+            Authorization: `Bearer ${newToken}`,
+          },
         });
         if (retryResponse.ok) {
           return retryResponse.json();
@@ -89,9 +91,42 @@ class ApiService {
     }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
-      throw new Error(error.detail || error.message || 'Request failed');
+      // Try to parse JSON body to extract informative error messages
+      const parsed = await response.json().catch(() => null);
+
+      let message = response.statusText || "Request failed";
+
+      if (parsed) {
+        if (typeof parsed === "string") {
+          message = parsed;
+        } else if (parsed.detail) {
+          // DRF default detail message
+          message = parsed.detail;
+        } else if (typeof parsed === "object") {
+          // Aggregate field errors
+          const parts: string[] = [];
+          for (const [key, val] of Object.entries(parsed)) {
+            if (Array.isArray(val)) {
+              parts.push(`${key}: ${val.join(" ")}`);
+            } else if (typeof val === "object") {
+              // nested object (e.g., { field: { sub: [...] } })
+              parts.push(`${key}: ${JSON.stringify(val)}`);
+            } else {
+              parts.push(`${key}: ${String(val)}`);
+            }
+          }
+          if (parts.length) message = parts.join(" | ");
+        }
+      }
+
+      const err = new Error(message || "Request failed");
+      // Attach parsed body so callers can inspect field-level errors
+      try {
+        (err as any).data = parsed;
+      } catch {}
+      throw err;
     }
+
     return response.json();
   }
 
@@ -116,17 +151,16 @@ class ApiService {
       this.isRefreshing = false;
       this.refreshSubscribers = [];
       // Clear tokens and redirect to login
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      window.location.href = '/login';
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      window.location.href = "/login";
       return null;
     }
   }
 
-
   async register(data: RegisterData): Promise<{ message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register/`, {
-      method: 'POST',
+    const response = await fetch(`${this.API_BASE_URL}/api/auth/register/`, {
+      method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify(data),
     });
@@ -134,94 +168,128 @@ class ApiService {
   }
 
   async verifyEmail(data: VerifyEmailData): Promise<{ message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/verify-email/`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(data),
-    });
+    const response = await fetch(
+      `${this.API_BASE_URL}/api/auth/verify-email/`,
+      {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify(data),
+      }
+    );
     return this.handleResponse(response);
   }
 
   async login(data: LoginData): Promise<AuthTokens> {
     const payload: any = { password: data.password };
-    
+
     // Support login with either email or username
     if (data.email) {
-      payload.email = data.email;
+      payload.identifier = data.email;
     }
     if (data.username) {
-      payload.username = data.username;
+      payload.identifier = data.username;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
-      method: 'POST',
+    const response = await fetch(`${this.API_BASE_URL}/api/auth/login/`, {
+      method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify(payload),
     });
     const tokens = await this.handleResponse<AuthTokens>(response);
-    
-    // Store tokens
-    localStorage.setItem('access_token', tokens.access);
-    localStorage.setItem('refresh_token', tokens.refresh);
-    
+
+    // Store tokens and data
+    localStorage.setItem("access_token", tokens.access);
+    localStorage.setItem("refresh_token", tokens.refresh);
+    localStorage.setItem("user_data", JSON.stringify(tokens.user_data));
+
     return tokens;
   }
 
-  async getCurrentUser(): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/me/`, {
+  async getCurrentUser(id: number): Promise<User> {
+    const response = await fetch(`${this.API_BASE_URL}/api/auth/user/`, {
+      method: "POST",
       headers: this.getHeaders(true),
+      body: JSON.stringify({ id }),
     });
     return this.handleResponse(response);
   }
 
   async getUsers(): Promise<User[]> {
-    const response = await fetch(`${API_BASE_URL}/api/users/`, {
+    const response = await fetch(`${this.API_BASE_URL}/api/auth/users/`, {
       headers: this.getHeaders(true),
     });
     return this.handleResponse(response);
   }
 
   async updateUserAdmin(userId: number, isAdmin: boolean): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/users/${userId}/`, {
-      method: 'PATCH',
+    const response = await fetch(`${this.API_BASE_URL}/api/auth/user/admin/`, {
+      method: "PATCH",
       headers: this.getHeaders(true),
-      body: JSON.stringify({ is_staff: isAdmin }),
+      body: JSON.stringify({ id: userId, is_staff: isAdmin }),
     });
     return this.handleResponse(response);
   }
 
-  async refreshToken(): Promise<AuthTokens> {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) throw new Error('No refresh token available');
+  async deleteUser(
+    userId: number
+  ): Promise<{ success: boolean; deleted_id: number }> {
+    const response = await fetch(
+      `${this.API_BASE_URL}/api/auth/users/delete/`,
+      {
+        method: "DELETE",
+        headers: this.getHeaders(true),
+        body: JSON.stringify({ id: userId }),
+      }
+    );
+    return this.handleResponse(response);
+  }
 
-    const response = await fetch(`${API_BASE_URL}/api/token/refresh/`, {
-      method: 'POST',
+  async resendVerification(
+    email: string
+  ): Promise<{ detail: string; email: string }> {
+    const response = await fetch(
+      `${this.API_BASE_URL}/api/auth/resend-verification/`,
+      {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({ email }),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
+  async refreshToken(): Promise<AuthTokens> {
+    const refreshToken = localStorage.getItem("refresh_token");
+    if (!refreshToken) throw new Error("No refresh token available");
+
+    const response = await fetch(`${this.API_BASE_URL}/api/token/refresh/`, {
+      method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({ refresh: refreshToken }),
     });
-    
+
     const tokens = await this.handleResponse<AuthTokens>(response);
-    localStorage.setItem('access_token', tokens.access);
-    
+    localStorage.setItem("access_token", tokens.access);
+
     return tokens;
   }
 
   async logout(): Promise<void> {
-    const refreshToken = localStorage.getItem('refresh_token');
+    const refreshToken = localStorage.getItem("refresh_token");
     if (refreshToken) {
-      await fetch(`${API_BASE_URL}/api/token/blacklist/`, {
-        method: 'POST',
+      await fetch(`${this.API_BASE_URL}/api/token/blacklist/`, {
+        method: "POST",
         headers: this.getHeaders(true),
         body: JSON.stringify({ refresh: refreshToken }),
       });
     }
-    
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
   }
 
   async getSongs(): Promise<Song[]> {
-    const response = await fetch(`${API_BASE_URL}/api/songs/`, {
+    const response = await fetch(`${this.API_BASE_URL}/api/songs/`, {
       headers: this.getHeaders(true),
     });
     return this.handleResponse(response);
@@ -229,17 +297,17 @@ class ApiService {
 
   async uploadSong(data: SongUploadData): Promise<Song> {
     const formData = new FormData();
-    formData.append('title', data.title);
-    formData.append('artist_name', data.artist_name);
-    if (data.duration) formData.append('duration', data.duration);
-    formData.append('mp3_file', data.mp3_file);
-    if (data.cover_image) formData.append('cover_image', data.cover_image);
+    formData.append("title", data.title);
+    formData.append("artist_name", data.artist_name);
+    formData.append("audio_file", data.audio_file);
+    formData.append("cover_image", data.cover_image);
 
-    const token = localStorage.getItem('access_token');
-    const response = await fetch(`${API_BASE_URL}/api/songs/upload/`, {
-      method: 'POST',
+    const token = localStorage.getItem("access_token");
+
+    const response = await fetch(`${this.API_BASE_URL}/api/songs/upload/`, {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       body: formData,
     });
@@ -247,16 +315,24 @@ class ApiService {
   }
 
   async getSongsByArtist(artistName: string): Promise<Song[]> {
-    const response = await fetch(`${API_BASE_URL}/api/songs/artists/${encodeURIComponent(artistName)}/`, {
-      headers: this.getHeaders(true),
-    });
+    const response = await fetch(
+      `${this.API_BASE_URL}/api/songs/artists/${encodeURIComponent(
+        artistName
+      )}/`,
+      {
+        headers: this.getHeaders(true),
+      }
+    );
     return this.handleResponse(response);
   }
 
   async getSongsByTitle(title: string): Promise<Song[]> {
-    const response = await fetch(`${API_BASE_URL}/api/songs/titles/${encodeURIComponent(title)}/`, {
-      headers: this.getHeaders(true),
-    });
+    const response = await fetch(
+      `${this.API_BASE_URL}/api/songs/titles/${encodeURIComponent(title)}/`,
+      {
+        headers: this.getHeaders(true),
+      }
+    );
     return this.handleResponse(response);
   }
 }

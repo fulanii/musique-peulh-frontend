@@ -1,33 +1,35 @@
-import { Play, Pause, Music2 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Song } from '@/lib/api';
+import { Play, Pause, Music2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Song } from "@/lib/api";
 
 interface SongCardProps {
   song: Song;
   onPlay: () => void;
+  onPause: () => void;
   isPlaying: boolean;
 }
 
-const SongCard = ({ song, onPlay, isPlaying }: SongCardProps) => {
+const SongCard = ({ song, onPlay, onPause, isPlaying }: SongCardProps) => {
   return (
-    <Card className="group overflow-hidden card-gradient border-border hover:border-primary/50 transition-all duration-300">
-      <div className="relative aspect-square">
+    // flex ->
+    <Card className="group overflow-hidden card-gradient border-border hover:border-primary/50 transition-all duration-300 flex flex-row items-center h-[150px]">
+      <div className="relative ">
         {song.cover_image ? (
-          <img 
-            src={song.cover_image} 
+          <img
+            src={song.cover_image}
             alt={song.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover h-[150px] w-[150px]" // h ->
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
             <Music2 className="w-20 h-20 text-primary/50" />
           </div>
         )}
-        
+
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
           <Button
-            onClick={onPlay}
+            onClick={isPlaying ? onPause : onPlay}
             size="lg"
             className="rounded-full w-16 h-16 hero-gradient text-primary-foreground hover:scale-110 transition-transform"
           >
@@ -39,10 +41,12 @@ const SongCard = ({ song, onPlay, isPlaying }: SongCardProps) => {
           </Button>
         </div>
       </div>
-      
+
       <div className="p-4">
         <h3 className="font-semibold text-lg truncate mb-1">{song.title}</h3>
-        <p className="text-sm text-muted-foreground truncate">{song.artist_name}</p>
+        <p className="text-sm text-muted-foreground truncate">
+          {song.artist_name}
+        </p>
         <p className="text-xs text-muted-foreground mt-1">{song.duration}</p>
       </div>
     </Card>

@@ -1,18 +1,32 @@
-import { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Music2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { Song } from '@/lib/api';
+import { useState, useRef, useEffect } from "react";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  Music2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Song } from "@/lib/api";
 
 interface MusicPlayerProps {
   song: Song;
   onNext: () => void;
   onPrevious: () => void;
+  isPlaying: boolean;
+  setIsPlaying: (playing: boolean) => void;
 }
 
-const MusicPlayer = ({ song, onNext, onPrevious }: MusicPlayerProps) => {
+const MusicPlayer = ({
+  song,
+  onNext,
+  onPrevious,
+  isPlaying,
+  setIsPlaying,
+}: MusicPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(80);
@@ -24,21 +38,29 @@ const MusicPlayer = ({ song, onNext, onPrevious }: MusicPlayerProps) => {
   }, [volume]);
 
   useEffect(() => {
-    // Reset and play new song
+    // Reset time when a new song is selected
     setCurrentTime(0);
-    setIsPlaying(true);
-    audioRef.current?.play();
+    // load the new src and then play/pause depending on isPlaying
+    if (audioRef.current) {
+      audioRef.current.load();
+    }
   }, [song]);
 
-  const togglePlay = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
+  // sync audio element when parent playback state changes
+  useEffect(() => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.play().catch(() => {
+        // ignore play promise errors (autoplay restrictions)
+      });
+    } else {
+      audioRef.current.pause();
     }
+  }, [isPlaying]);
+
+  const togglePlay = () => {
+    // notify parent to update playing state; parent effect will handle actual audio element
+    setIsPlaying(!isPlaying);
   };
 
   const handleTimeUpdate = () => {
@@ -64,26 +86,27 @@ const MusicPlayer = ({ song, onNext, onPrevious }: MusicPlayerProps) => {
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-border z-50 animate-slide-up">
+    // fixed bottom-0
+    <div className="fixed bottom-0  left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-border z-50 animate-slide-up">
       <audio
         ref={audioRef}
-        src={song.mp3_file}
+        src={song.audio_file}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={onNext}
       />
-      
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center gap-4">
+
+      <div className="container mx-auto px-2 py-2">
+        <div className="flex items-center gap-4 max-[700px]:flex-col max-[700px]:w-full">
           {/* Song Info */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex items-center gap-3 min-w-0 flex-1 max-w-fit">
             {song.cover_image ? (
-              <img 
-                src={song.cover_image} 
+              <img
+                src={song.cover_image}
                 alt={song.title}
                 className="w-14 h-14 rounded object-cover"
               />
@@ -94,12 +117,14 @@ const MusicPlayer = ({ song, onNext, onPrevious }: MusicPlayerProps) => {
             )}
             <div className="min-w-0">
               <p className="font-semibold truncate">{song.title}</p>
-              <p className="text-sm text-muted-foreground truncate">{song.artist_name}</p>
+              <p className="text-sm text-muted-foreground truncate">
+                {song.artist_name}
+              </p>
             </div>
           </div>
 
           {/* Controls */}
-          <div className="flex flex-col items-center gap-2 flex-1">
+          <div className="flex flex-col items-center gap-2 flex-1 max-[700px]:w-full">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
@@ -109,7 +134,7 @@ const MusicPlayer = ({ song, onNext, onPrevious }: MusicPlayerProps) => {
               >
                 <SkipBack className="w-5 h-5" />
               </Button>
-              
+
               <Button
                 variant="default"
                 size="icon"
@@ -122,7 +147,7 @@ const MusicPlayer = ({ song, onNext, onPrevious }: MusicPlayerProps) => {
                   <Play className="w-5 h-5 fill-current ml-0.5" />
                 )}
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -132,7 +157,7 @@ const MusicPlayer = ({ song, onNext, onPrevious }: MusicPlayerProps) => {
                 <SkipForward className="w-5 h-5" />
               </Button>
             </div>
-            
+
             {/* Progress Bar */}
             <div className="flex items-center gap-2 w-full max-w-md">
               <span className="text-xs text-muted-foreground w-10 text-right">
@@ -149,18 +174,6 @@ const MusicPlayer = ({ song, onNext, onPrevious }: MusicPlayerProps) => {
                 {formatTime(duration)}
               </span>
             </div>
-          </div>
-
-          {/* Volume */}
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <Volume2 className="w-5 h-5 text-muted-foreground" />
-            <Slider
-              value={[volume]}
-              max={100}
-              step={1}
-              onValueChange={(value) => setVolume(value[0])}
-              className="w-24"
-            />
           </div>
         </div>
       </div>

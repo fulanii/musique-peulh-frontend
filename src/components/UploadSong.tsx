@@ -29,7 +29,7 @@ const UploadSong = () => {
       await api.uploadSong({
         title: formData.title,
         artist_name: formData.artist_name,
-        mp3_file: mp3File,
+        audio_file: mp3File,
         cover_image: coverImage || undefined,
       });
       
@@ -52,7 +52,7 @@ const UploadSong = () => {
 
   return (
     <Card className="p-6 card-gradient border-border">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" >
         <div className="space-y-2">
           <Label htmlFor="title">Song Title</Label>
           <Input
@@ -84,7 +84,7 @@ const UploadSong = () => {
           <Input
             id="mp3"
             type="file"
-            accept="audio/mp3,audio/mpeg"
+            // accept="audio/mp3,audio/mpeg,audio/mpeg-4"
             onChange={(e) => setMp3File(e.target.files?.[0] || null)}
             required
             className="bg-background/50"
