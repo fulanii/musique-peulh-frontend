@@ -19,7 +19,7 @@ const SongCard = ({ song, onPlay, onPause, isPlaying }: SongCardProps) => {
           <img
             src={song.cover_image}
             alt={song.title}
-            className="w-full h-full object-cover h-[150px] w-[150px]" // h ->
+            className="object-cover h-[150px] w-[150px]" // h ->
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
