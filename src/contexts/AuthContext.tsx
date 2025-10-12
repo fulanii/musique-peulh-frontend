@@ -23,7 +23,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const checkAuth = async () => {
-    const token = localStorage.getItem("access_token");
+    let token = localStorage.getItem("access_token");
+    const refreshToken = localStorage.getItem("refresh_token");
+
+    // If no access token but refresh token exists, try to refresh
+    if (!token && refreshToken) {
+      try {
+        await api.refreshToken();
+        token = localStorage.getItem("access_token");
+      } catch (err) {
+        // Refresh failed, clear tokens and log out
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        setLoading(false);
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        return;
+      }
+    }
+
     if (!token) {
       setIsAuthenticated(false);
       setIsAdmin(false);

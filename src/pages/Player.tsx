@@ -141,7 +141,7 @@ const Player = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 flex-1">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Your Music Library</h1>
+          <h1 className="text-3xl font-bold mb-2">Music Library</h1>
           <p className="text-muted-foreground">
             {songs.length} {songs.length === 1 ? "song" : "songs"} available
           </p>
