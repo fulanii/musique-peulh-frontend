@@ -51,13 +51,16 @@ const Register = () => {
             msg = Array.isArray(anyErr.data.username)
               ? anyErr.data.username.join(" ")
               : String(anyErr.data.username);
-          } else if (anyErr.data.email) {
+          } 
+          else if (anyErr.data.email) {
             msg = Array.isArray(anyErr.data.email)
               ? anyErr.data.email.join(" ")
               : String(anyErr.data.email);
-          } else if (anyErr.data.detail) {
+          } 
+          else if (anyErr.data.detail) {
             msg = String(anyErr.data.detail);
-          } else {
+          } 
+          else {
             msg = error.message;
           }
         } else {

@@ -39,8 +39,8 @@ const Login = () => {
       if (error instanceof Error) {
         if (error.message.includes("No active account found")) {
           msg = "Account does not exist or is inactive.";
-        } else if (error.message.toLowerCase().includes("password")) {
-          msg = "Incorrect password.";
+        } else if (error.message.toLowerCase().includes("invalid")) {
+          msg = "Incorrect username or password.";
         } else if (error.message.toLowerCase().includes("verify")) {
           msg = "Your account is not verified. Please check your email.";
         } else {

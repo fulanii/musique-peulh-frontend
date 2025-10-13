@@ -118,7 +118,8 @@ const VerifyEmail = () => {
                   const res = await api.resendVerification(email);
                   toast.success(res.detail || "Verification code resent");
                 } catch (err) {
-                  toast.error("Failed to resend verification code");
+                  // console.log(err.data.detail) // User is already verified.
+                  toast.error(`${err}`);
                 }
               }}
             >
