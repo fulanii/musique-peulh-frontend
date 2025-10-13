@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://api.musiquepeulh.com';
+// const API_BASE_URL = 'https://api.musiquepeulh.com';
 
 export interface RegisterData {
   email: string;
@@ -54,7 +54,7 @@ export interface User {
 class ApiService {
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
-  public API_BASE_URL = 'https://api.musiquepeulh.com';
+  public API_BASE_URL = 'https://api.musiquepeulh.com'; // 'http://localhost:8000'
 
   private getHeaders(includeAuth = false): HeadersInit {
     const headers: HeadersInit = {
@@ -234,11 +234,11 @@ class ApiService {
     userId: number
   ): Promise<{ success: boolean; deleted_id: number }> {
     const response = await fetch(
-      `${this.API_BASE_URL}/api/auth/users/delete/`,
+      `${this.API_BASE_URL}/api/auth/users/delete/${userId}`,
       {
         method: "DELETE",
         headers: this.getHeaders(true),
-        body: JSON.stringify({ id: userId }),
+        // body: JSON.stringify({ id: userId }),
       }
     );
     return this.handleResponse(response);

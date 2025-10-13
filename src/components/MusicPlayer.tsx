@@ -44,6 +44,35 @@ const MusicPlayer = ({
     if (audioRef.current) {
       audioRef.current.load();
     }
+    // Update Media Session metadata (for OS media controls)
+    if ((navigator as any).mediaSession) {
+      try {
+        (navigator as any).mediaSession.metadata = new (
+          window as any
+        ).MediaMetadata({
+          title: song.title,
+          artist: song.artist_name,
+          album: "",
+          artwork: song.cover_image
+            ? [{ src: song.cover_image, sizes: "512x512", type: "image/png" }]
+            : [],
+        });
+
+        (navigator as any).mediaSession.setActionHandler("play", () =>
+          setIsPlaying(true)
+        );
+        (navigator as any).mediaSession.setActionHandler("pause", () =>
+          setIsPlaying(false)
+        );
+        (navigator as any).mediaSession.setActionHandler(
+          "previoustrack",
+          onPrevious
+        );
+        (navigator as any).mediaSession.setActionHandler("nexttrack", onNext);
+      } catch (e) {
+        // ignore if MediaSession not supported
+      }
+    }
   }, [song]);
 
   // sync audio element when parent playback state changes

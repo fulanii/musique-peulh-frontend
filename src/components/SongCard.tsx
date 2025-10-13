@@ -47,7 +47,7 @@ const SongCard = ({ song, onPlay, onPause, isPlaying }: SongCardProps) => {
         <p className="text-sm text-muted-foreground truncate">
           {song.artist_name}
         </p>
-        <p className="text-xs text-muted-foreground mt-1">{song.duration}</p>
+        <p className="text-xs text-muted-foreground mt-1">{song.duration} M</p>
       </div>
     </Card>
   );
