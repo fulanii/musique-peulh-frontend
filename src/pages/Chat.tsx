@@ -37,7 +37,7 @@ const Chat = () => {
         <Card className="p-6">
           <h1 className="text-2xl font-bold">MusiquePeulh Chat</h1>
           <p className="text-muted-foreground mt-2">
-            Chat and hangout with the community.
+            Chat and hangout with the community. (Coming Soon)
           </p>
         </Card>
       </main>
