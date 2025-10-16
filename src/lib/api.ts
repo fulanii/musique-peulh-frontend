@@ -1,4 +1,3 @@
-// const API_BASE_URL = 'https://api.musiquepeulh.com';
 
 export interface RegisterData {
   email: string;
@@ -54,7 +53,7 @@ export interface User {
 class ApiService {
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
-  public API_BASE_URL = 'https://api.musiquepeulh.com'; // 'http://localhost:8000' // 
+  public API_BASE_URL =  'https://api.musiquepeulh.com'; // "http://localhost:8000"; //
 
   private getHeaders(includeAuth = false): HeadersInit {
     const headers: HeadersInit = {
@@ -253,6 +252,36 @@ class ApiService {
         method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify({ email }),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
+  async requestPasswordReset(
+    email: string
+  ): Promise<{ message?: string; error?: string }> {
+    const response = await fetch(
+      `${this.API_BASE_URL}/api/auth/reset-password-request/`,
+      {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({ email }),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
+  async resetPassword(
+    email: string,
+    code: number,
+    newPassword: string
+  ): Promise<{ message?: string; error?: string }> {
+    const response = await fetch(
+      `${this.API_BASE_URL}/api/auth/reset-password/`,
+      {
+        method: "PATCH",
+        headers: this.getHeaders(),
+        body: JSON.stringify({ email, code, new_password: newPassword }),
       }
     );
     return this.handleResponse(response);

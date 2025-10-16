@@ -131,6 +131,7 @@ const UserManagement = () => {
               <TableHead>Username</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Verified</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -146,6 +147,13 @@ const UserManagement = () => {
                     <Badge variant="secondary">Admin</Badge>
                   ) : (
                     <Badge variant="outline">User</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {user.is_verified ? (
+                    <Badge className="bg-green-100 text-green-800">Yes</Badge>
+                  ) : (
+                    <Badge variant="outline">No</Badge>
                   )}
                 </TableCell>
                 <TableCell>

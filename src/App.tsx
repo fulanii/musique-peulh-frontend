@@ -8,23 +8,33 @@ import Landing from "./pages/Landing";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import Login from "./pages/Login";
+import ResetRequest from "./pages/ResetRequest";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Player from "./pages/Player";
+import Settings from "./pages/Settings";
+import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) => {
+const ProtectedRoute = ({
+  children,
+  adminOnly = false,
+}: {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+}) => {
   const { isAuthenticated, isAdmin } = useAuth();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   if (adminOnly && !isAdmin) {
     return <Navigate to="/player" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
@@ -40,8 +50,40 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<ProtectedRoute adminOnly><Dashboard /></ProtectedRoute>} />
-            <Route path="/player" element={<ProtectedRoute><Player /></ProtectedRoute>} />
+            <Route path="/reset-request" element={<ResetRequest />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute adminOnly>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/player"
+              element={
+                <ProtectedRoute>
+                  <Player />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chat"
+              element={
+                <ProtectedRoute>
+                  <Chat />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -118,6 +118,14 @@ const Login = () => {
             >
               Sign up
             </Link>
+            <div className="mt-2">
+              <Link
+                to="/reset-request"
+                className="text-sm text-muted-foreground hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </div>
         </div>
       </div>

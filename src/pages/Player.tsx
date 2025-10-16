@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Music2, LogOut, Settings, Menu } from "lucide-react";
+import {
+  Music2,
+  LogOut,
+  Settings,
+  Menu,
+  Play,
+  Pause,
+  Shuffle,
+  MessageSquare,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,6 +18,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
+import MobileMenu from "@/components/MobileMenu";
 import { api, Song } from "@/lib/api";
 import { toast } from "sonner";
 import SongCard from "@/components/SongCard";
@@ -22,6 +32,8 @@ const Player = () => {
   const [loading, setLoading] = useState(true);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
+  const [playAllActive, setPlayAllActive] = useState(false);
 
   useEffect(() => {
     loadSongs();
@@ -44,7 +56,31 @@ const Player = () => {
   };
 
   const handlePlaySong = (song: Song) => {
+    // playing a single song should exit "Play All" mode
+    setPlayAllActive(false);
     setCurrentSong(song);
+    setIsPlaying(true);
+  };
+  const handlePlayAllToggle = () => {
+    if (songs.length === 0) return;
+    if (playAllActive && isPlaying) {
+      // pause play-all
+      setIsPlaying(false);
+      setPlayAllActive(false);
+      return;
+    }
+
+    // start or resume play-all
+    setPlayAllActive(true);
+    if (!currentSong || !songs.find((s) => s.id === currentSong.id)) {
+      // pick first or random based on shuffle
+      if (shuffle) {
+        const idx = Math.floor(Math.random() * songs.length);
+        setCurrentSong(songs[idx]);
+      } else {
+        setCurrentSong(songs[0]);
+      }
+    }
     setIsPlaying(true);
   };
   const handlePause = (song: Song) => {
@@ -56,6 +92,18 @@ const Player = () => {
 
   const handleNext = () => {
     if (!currentSong) return;
+    if (shuffle) {
+      // pick a random different song
+      if (songs.length === 1) return;
+      let idx = Math.floor(Math.random() * songs.length);
+      while (songs[idx].id === currentSong.id) {
+        idx = Math.floor(Math.random() * songs.length);
+      }
+      setCurrentSong(songs[idx]);
+      setIsPlaying(true);
+      return;
+    }
+
     const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
     const nextIndex = (currentIndex + 1) % songs.length;
     setCurrentSong(songs[nextIndex]);
@@ -87,6 +135,33 @@ const Player = () => {
             </Link>
 
             <div className="flex items-center gap-4">
+              <div className="hidden sm:flex items-center gap-2">
+                {/* Play All button: shows Play or Pause depending on playback state */}
+                <Button
+                  variant="ghost"
+                  onClick={handlePlayAllToggle}
+                  className="flex items-center gap-2"
+                >
+                  {isPlaying ? (
+                    <Pause className="w-4 h-4" />
+                  ) : (
+                    <Play className="w-4 h-4" />
+                  )}
+                </Button>
+
+                {/* Shuffle toggle as an icon button */}
+                <Button
+                  variant="ghost"
+                  onClick={() => setShuffle(!shuffle)}
+                  className={`flex items-center gap-2 ${
+                    shuffle ? "text-primary" : ""
+                  }`}
+                  aria-pressed={shuffle}
+                  title={shuffle ? "Shuffle On" : "Shuffle Off"}
+                >
+                  <Shuffle className="w-4 h-4" />
+                </Button>
+              </div>
               {/* Desktop buttons - hidden on small screens */}
               <div className="hidden sm:flex items-center gap-4">
                 {isAdmin && (
@@ -101,6 +176,22 @@ const Player = () => {
                 )}
                 <Button
                   variant="outline"
+                  onClick={() => navigate("/settings")}
+                  className="border-primary/30 hover:bg-primary/10"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/chat")}
+                  className="border-primary/30 hover:bg-primary/10"
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Chat
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={handleLogout}
                   className="border-destructive/30 hover:bg-destructive/10"
                 >
@@ -111,27 +202,7 @@ const Player = () => {
 
               {/* Mobile hamburger - visible on small screens */}
               <div className="sm:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-10 h-10">
-                      <Menu className="w-5 h-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {isAdmin && (
-                      <DropdownMenuItem onSelect={() => navigate("/dashboard")}>
-                        <div className="flex items-center gap-2">
-                          <Settings className="w-4 h-4" /> Dashboard
-                        </div>
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onSelect={handleLogout}>
-                      <div className="flex items-center gap-2">
-                        <LogOut className="w-4 h-4" /> Logout
-                      </div>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <MobileMenu />
               </div>
             </div>
           </div>

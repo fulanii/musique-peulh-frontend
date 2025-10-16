@@ -15,6 +15,7 @@ import ManageSongs from "@/components/ManageSongs";
 import Analytics from "@/components/Analytics";
 import UserManagement from "@/components/UserManagement";
 import Footer from "@/components/Footer";
+import MobileMenu from "@/components/MobileMenu";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -65,25 +66,7 @@ const Dashboard = () => {
               </div>
 
               <div className="sm:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-10 h-10">
-                      <Menu className="w-5 h-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => navigate("/player")}>
-                      <div className="flex items-center gap-2">
-                        <Play className="w-4 h-4" /> Go to Player
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleLogout}>
-                      <div className="flex items-center gap-2">
-                        <LogOut className="w-4 h-4" /> Logout
-                      </div>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <MobileMenu />
               </div>
             </div>
           </div>
