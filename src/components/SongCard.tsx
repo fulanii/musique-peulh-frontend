@@ -12,8 +12,8 @@ interface SongCardProps {
 
 const SongCard = ({ song, onPlay, onPause, isPlaying }: SongCardProps) => {
   return (
-    // flex ->
-    <Card className="group overflow-hidden card-gradient border-border hover:border-primary/50 transition-all duration-300 flex flex-row items-center h-[150px]">
+    // modify/added from flex on ->
+    <Card className="group overflow-hidden card-gradient border-border hover:border-primary/50 transition-all duration-300 flex flex-row items-center h-[150px] w-[300px]">
       <div className="relative ">
         {song.cover_image ? (
           <img
