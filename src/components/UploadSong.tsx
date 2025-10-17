@@ -30,7 +30,7 @@ const UploadSong = () => {
         title: formData.title,
         artist_name: formData.artist_name,
         audio_file: mp3File,
-        cover_image: coverImage || undefined,
+        // cover_image: coverImage || undefined,
       });
       
       toast.success('Song uploaded successfully!');
@@ -38,7 +38,7 @@ const UploadSong = () => {
       // Reset form
       setFormData({ title: '', artist_name: '' });
       setMp3File(null);
-      setCoverImage(null);
+      // setCoverImage(null);
       
       // Reset file inputs
       const fileInputs = document.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>;
@@ -96,7 +96,7 @@ const UploadSong = () => {
           )}
         </div>
 
-        <div className="space-y-2">
+        {/* <div className="space-y-2">
           <Label htmlFor="cover">Cover Image (Optional)</Label>
           <Input
             id="cover"
@@ -110,7 +110,7 @@ const UploadSong = () => {
               Selected: {coverImage.name}
             </p>
           )}
-        </div>
+        </div> */}
 
         <Button 
           type="submit" 
