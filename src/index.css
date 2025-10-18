@@ -90,3 +90,6 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+img {
+  max-width: none;
+}
