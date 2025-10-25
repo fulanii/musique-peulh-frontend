@@ -1,4 +1,3 @@
-
 export interface RegisterData {
   email: string;
   username: string;
@@ -53,7 +52,7 @@ export interface User {
 class ApiService {
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
-  public API_BASE_URL =   'https://api.musiquepeulh.com'; // "http://localhost:8000"; // 
+  public API_BASE_URL = "https://api.musiquepeulh.com"; // "http://localhost:8000"; //
 
   private getHeaders(includeAuth = false): HeadersInit {
     const headers: HeadersInit = {
@@ -73,9 +72,10 @@ class ApiService {
   private async handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 401) {
       const parsed = await response.json().catch(() => null);
-      const isTokenExpired = parsed?.code === "token_not_valid" || 
-                            parsed?.messages?.[0]?.message === "Token is expired";
-      
+      const isTokenExpired =
+        parsed?.code === "token_not_valid" ||
+        parsed?.messages?.[0]?.message === "Token is expired";
+
       if (isTokenExpired) {
         // Only try refresh for token expiration
         const newToken = await this.handleTokenRefresh();
