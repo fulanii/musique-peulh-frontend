@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Song } from "@/lib/api";
+import { getCachedBlobUrl } from "@/lib/offline";
 
 interface MusicPlayerProps {
   song: Song;
@@ -30,6 +31,10 @@ const MusicPlayer = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(80);
+  const [audioSrc, setAudioSrc] = useState<string>(song.audio_file);
+  const objectUrlRef = useRef<string | null>(null);
+  const lastPrevClick = useRef<number | null>(null);
+  const PREV_DOUBLE_CLICK_MS = 1200; // timeframe to go to previous track
 
   useEffect(() => {
     if (audioRef.current) {
@@ -40,10 +45,43 @@ const MusicPlayer = ({
   useEffect(() => {
     // Reset time when a new song is selected
     setCurrentTime(0);
-    // load the new src and then play/pause depending on isPlaying
-    if (audioRef.current) {
-      audioRef.current.load();
-    }
+    // try to use cached blob when available (offline)
+    let cancelled = false;
+    (async () => {
+      try {
+        const cached = await getCachedBlobUrl(song.audio_file);
+        if (cancelled) return;
+        if (cached) {
+          // revoke previous object URL if any
+          if (objectUrlRef.current) {
+            try {
+              URL.revokeObjectURL(objectUrlRef.current);
+            } catch {}
+          }
+          objectUrlRef.current = cached;
+          setAudioSrc(cached);
+        } else {
+          // clear any previously set objectUrl
+          if (objectUrlRef.current) {
+            try {
+              URL.revokeObjectURL(objectUrlRef.current);
+            } catch {}
+            objectUrlRef.current = null;
+          }
+          setAudioSrc(song.audio_file);
+        }
+      } catch (e) {
+        setAudioSrc(song.audio_file);
+      } finally {
+        if (audioRef.current) {
+          // reload audio element to pick up new src
+          audioRef.current.load();
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
     // Update Media Session metadata (for OS media controls)
     if ((navigator as any).mediaSession) {
       try {
@@ -64,9 +102,9 @@ const MusicPlayer = ({
         (navigator as any).mediaSession.setActionHandler("pause", () =>
           setIsPlaying(false)
         );
-        (navigator as any).mediaSession.setActionHandler(
-          "previoustrack",
-          onPrevious
+        (navigator as any).mediaSession.setActionHandler("previoustrack", () =>
+          // map to our previous-click logic: restart first, then prev on quick second click
+          handlePrevClick()
         );
         (navigator as any).mediaSession.setActionHandler("nexttrack", onNext);
       } catch (e) {
@@ -90,6 +128,39 @@ const MusicPlayer = ({
   const togglePlay = () => {
     // notify parent to update playing state; parent effect will handle actual audio element
     setIsPlaying(!isPlaying);
+  };
+
+  const handlePrevClick = () => {
+    const now = Date.now();
+    const audioEl = audioRef.current;
+    // First click: restart song
+    if (
+      !lastPrevClick.current ||
+      now - lastPrevClick.current > PREV_DOUBLE_CLICK_MS
+    ) {
+      // restart
+      if (audioEl) {
+        try {
+          audioEl.currentTime = 0;
+          setCurrentTime(0);
+        } catch {}
+      }
+      lastPrevClick.current = now;
+      // set a timer to clear the click window
+      setTimeout(() => {
+        lastPrevClick.current = null;
+      }, PREV_DOUBLE_CLICK_MS);
+      return;
+    }
+
+    // second click in timeframe -> go to previous track
+    if (
+      lastPrevClick.current &&
+      now - lastPrevClick.current <= PREV_DOUBLE_CLICK_MS
+    ) {
+      lastPrevClick.current = null;
+      onPrevious();
+    }
   };
 
   const handleTimeUpdate = () => {
@@ -124,12 +195,24 @@ const MusicPlayer = ({
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
+  // cleanup object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        try {
+          URL.revokeObjectURL(objectUrlRef.current);
+        } catch {}
+        objectUrlRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     // fixed bottom-0
     <div className="fixed bottom-0  left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-border z-50 animate-slide-up">
       <audio
         ref={audioRef}
-        src={song.audio_file}
+        src={audioSrc}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={onNext}
@@ -164,7 +247,7 @@ const MusicPlayer = ({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onPrevious}
+                onClick={handlePrevClick}
                 className="hover:bg-primary/10"
               >
                 <SkipBack className="w-5 h-5" />

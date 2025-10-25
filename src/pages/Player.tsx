@@ -10,6 +10,13 @@ import {
   Shuffle,
   MessageSquare,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  downloadSongs,
+  setOfflineEnabled,
+  getOfflineEnabled,
+} from "@/lib/offline";
+import { t, initI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -34,8 +41,15 @@ const Player = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [shuffle, setShuffle] = useState(false);
   const [playAllActive, setPlayAllActive] = useState(false);
+  const [offlineEnabled, setOfflineEnabledState] = useState<boolean>(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({
+    completed: 0,
+    total: 0,
+  });
 
   useEffect(() => {
+    setOfflineEnabledState(getOfflineEnabled());
     loadSongs();
   }, []);
 
@@ -44,9 +58,45 @@ const Player = () => {
       const data = await api.getSongs();
       setSongs(data);
     } catch (error) {
-      toast.error("Failed to load songs");
+      toast.error(t("download_error") || "Failed to load songs");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startOfflineDownload = async () => {
+    if (!songs || songs.length === 0) return;
+    setDownloading(true);
+    // collect audio and cover urls, dedupe
+    const urls: string[] = [];
+    for (const s of songs) {
+      if (s.audio_file) urls.push(s.audio_file);
+      if (s.cover_image) urls.push(s.cover_image);
+    }
+    const unique = Array.from(new Set(urls));
+    setDownloadProgress({ completed: 0, total: unique.length });
+    try {
+      await downloadSongs(unique, (completed, total) => {
+        setDownloadProgress({ completed, total });
+      });
+      setOfflineEnabledState(true);
+      setOfflineEnabled(true);
+      toast.success(t("offline_ready"));
+    } catch (e) {
+      console.error(e);
+      toast.error(t("download_error"));
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleOfflineToggle = async (value: boolean) => {
+    if (value) {
+      // enable and kick off download if not already cached
+      await startOfflineDownload();
+    } else {
+      setOfflineEnabledState(false);
+      setOfflineEnabled(false);
     }
   };
 
@@ -214,8 +264,63 @@ const Player = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Music Library</h1>
           <p className="text-muted-foreground">
-            {songs.length} {songs.length === 1 ? "song" : "songs"} available
+            {t("songs_available", {
+              count: songs.length,
+              plural:
+                songs.length === 1 ? t("song_singular") : t("song_plural"),
+            })}
           </p>
+
+          <div className="mt-4 flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {/* Play All button (considers shuffle when starting) */}
+              <Button
+                variant="ghost"
+                onClick={handlePlayAllToggle}
+                className="flex items-center gap-2"
+                aria-pressed={playAllActive}
+                title={
+                  playAllActive && isPlaying ? "Pause Play All" : "Play All"
+                }
+              >
+                {playAllActive && isPlaying ? (
+                  <Pause className="w-4 h-4" />
+                ) : (
+                  <Play className="w-4 h-4" />
+                )}
+              </Button>
+
+              <Switch
+                id="offline-toggle"
+                checked={offlineEnabled}
+                onCheckedChange={(v: boolean) => handleOfflineToggle(v)}
+              />
+              <label htmlFor="offline-toggle" className="text-sm">
+                {t("offline_mode")}
+              </label>
+              {downloading && (
+                <span className="text-sm text-muted-foreground ml-3">
+                  {t("downloading_offline")} ({downloadProgress.completed}/
+                  {downloadProgress.total})
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const newShuffle = !shuffle;
+                  setShuffle(newShuffle);
+                  toast(newShuffle ? t("shuffle_on") : t("shuffle_off"));
+                }}
+                title={shuffle ? "Shuffle On" : "Shuffle Off"}
+                className={shuffle ? "text-primary" : ""}
+              >
+                <Shuffle className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </div>
 
         {loading ? (
