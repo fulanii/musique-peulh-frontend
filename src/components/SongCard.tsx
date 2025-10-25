@@ -2,23 +2,41 @@ import { Play, Pause, Music2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Song } from "@/lib/api";
+import { memo } from "react";
 
 interface SongCardProps {
   song: Song;
   onPlay: () => void;
   onPause: () => void;
   isPlaying: boolean;
+  isActive?: boolean;
 }
 
-const SongCard = ({ song, onPlay, onPause, isPlaying }: SongCardProps) => {
+const SongCard = ({
+  song,
+  onPlay,
+  onPause,
+  isPlaying,
+  isActive = false,
+}: SongCardProps) => {
   return (
     // Default: desktop/large card on >=656px. For screens <=655px, show a spotify-like list row (small square cover left, text right)
-    <Card className="group overflow-hidden card-gradient border-border hover:border-primary/50 transition-all duration-300 flex items-center h-[150px] w-[300px] max-[655px]:flex-row max-[655px]:w-full max-[655px]:h-[76px] max-[655px]:px-3">
+    <Card
+      className={`group overflow-hidden card-gradient transition-all duration-300 flex items-center h-[150px] w-[300px] max-[655px]:flex-row max-[655px]:w-full max-[655px]:h-[76px] max-[655px]:px-3 ${
+        isActive
+          ? "border-2 border-primary/60 shadow-lg"
+          : "border-border hover:border-primary/50"
+      }`}
+    >
       <div className="relative flex-shrink-0 flex items-center justify-center">
         {song.cover_image ? (
           <img
             src={song.cover_image}
             alt={song.title}
+            loading="lazy"
+            decoding="async"
+            width={150}
+            height={150}
             className="object-cover h-[150px] w-[150px] rounded-md max-[655px]:h-16 max-[655px]:w-16 max-[655px]:rounded-md"
           />
         ) : (
@@ -54,4 +72,4 @@ const SongCard = ({ song, onPlay, onPause, isPlaying }: SongCardProps) => {
   );
 };
 
-export default SongCard;
+export default memo(SongCard);

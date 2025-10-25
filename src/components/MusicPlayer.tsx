@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Song } from "@/lib/api";
-import { getCachedBlobUrl } from "@/lib/offline";
 
 interface MusicPlayerProps {
   song: Song;
@@ -32,7 +31,6 @@ const MusicPlayer = ({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(80);
   const [audioSrc, setAudioSrc] = useState<string>(song.audio_file);
-  const objectUrlRef = useRef<string | null>(null);
   const lastPrevClick = useRef<number | null>(null);
   const PREV_DOUBLE_CLICK_MS = 1200; // timeframe to go to previous track
 
@@ -45,43 +43,11 @@ const MusicPlayer = ({
   useEffect(() => {
     // Reset time when a new song is selected
     setCurrentTime(0);
-    // try to use cached blob when available (offline)
-    let cancelled = false;
-    (async () => {
-      try {
-        const cached = await getCachedBlobUrl(song.audio_file);
-        if (cancelled) return;
-        if (cached) {
-          // revoke previous object URL if any
-          if (objectUrlRef.current) {
-            try {
-              URL.revokeObjectURL(objectUrlRef.current);
-            } catch {}
-          }
-          objectUrlRef.current = cached;
-          setAudioSrc(cached);
-        } else {
-          // clear any previously set objectUrl
-          if (objectUrlRef.current) {
-            try {
-              URL.revokeObjectURL(objectUrlRef.current);
-            } catch {}
-            objectUrlRef.current = null;
-          }
-          setAudioSrc(song.audio_file);
-        }
-      } catch (e) {
-        setAudioSrc(song.audio_file);
-      } finally {
-        if (audioRef.current) {
-          // reload audio element to pick up new src
-          audioRef.current.load();
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    // set audio src to the provided song URL
+    setAudioSrc(song.audio_file);
+    if (audioRef.current) {
+      audioRef.current.load();
+    }
     // Update Media Session metadata (for OS media controls)
     if ((navigator as any).mediaSession) {
       try {
@@ -195,17 +161,7 @@ const MusicPlayer = ({
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  // cleanup object URL on unmount
-  useEffect(() => {
-    return () => {
-      if (objectUrlRef.current) {
-        try {
-          URL.revokeObjectURL(objectUrlRef.current);
-        } catch {}
-        objectUrlRef.current = null;
-      }
-    };
-  }, []);
+  // no object URL cleanup needed (no offline blob usage)
 
   return (
     // fixed bottom-0
@@ -234,8 +190,10 @@ const MusicPlayer = ({
               </div>
             )}
             <div className="min-w-0">
-              <p className="font-semibold truncate">{song.title}</p>
-              <p className="text-sm text-muted-foreground truncate">
+              <p className="font-semibold truncate max-[700px]:whitespace-normal">
+                {song.title}
+              </p>
+              <p className="text-sm text-muted-foreground truncate max-[700px]:whitespace-normal">
                 {song.artist_name}
               </p>
             </div>

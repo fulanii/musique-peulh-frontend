@@ -10,13 +10,7 @@ import {
   Shuffle,
   MessageSquare,
 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import {
-  downloadSongs,
-  setOfflineEnabled,
-  getOfflineEnabled,
-} from "@/lib/offline";
-import { t, initI18n } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -41,15 +35,8 @@ const Player = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [shuffle, setShuffle] = useState(false);
   const [playAllActive, setPlayAllActive] = useState(false);
-  const [offlineEnabled, setOfflineEnabledState] = useState<boolean>(false);
-  const [downloading, setDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState({
-    completed: 0,
-    total: 0,
-  });
 
   useEffect(() => {
-    setOfflineEnabledState(getOfflineEnabled());
     loadSongs();
   }, []);
 
@@ -64,41 +51,7 @@ const Player = () => {
     }
   };
 
-  const startOfflineDownload = async () => {
-    if (!songs || songs.length === 0) return;
-    setDownloading(true);
-    // collect audio and cover urls, dedupe
-    const urls: string[] = [];
-    for (const s of songs) {
-      if (s.audio_file) urls.push(s.audio_file);
-      if (s.cover_image) urls.push(s.cover_image);
-    }
-    const unique = Array.from(new Set(urls));
-    setDownloadProgress({ completed: 0, total: unique.length });
-    try {
-      await downloadSongs(unique, (completed, total) => {
-        setDownloadProgress({ completed, total });
-      });
-      setOfflineEnabledState(true);
-      setOfflineEnabled(true);
-      toast.success(t("offline_ready"));
-    } catch (e) {
-      console.error(e);
-      toast.error(t("download_error"));
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const handleOfflineToggle = async (value: boolean) => {
-    if (value) {
-      // enable and kick off download if not already cached
-      await startOfflineDownload();
-    } else {
-      setOfflineEnabledState(false);
-      setOfflineEnabled(false);
-    }
-  };
+  // offline functionality removed
 
   const handleLogout = async () => {
     await logout();
@@ -290,20 +243,7 @@ const Player = () => {
                 )}
               </Button>
 
-              <Switch
-                id="offline-toggle"
-                checked={offlineEnabled}
-                onCheckedChange={(v: boolean) => handleOfflineToggle(v)}
-              />
-              <label htmlFor="offline-toggle" className="text-sm">
-                {t("offline_mode")}
-              </label>
-              {downloading && (
-                <span className="text-sm text-muted-foreground ml-3">
-                  {t("downloading_offline")} ({downloadProgress.completed}/
-                  {downloadProgress.total})
-                </span>
-              )}
+              {/* offline mode removed */}
             </div>
 
             <div className="flex items-center gap-2">
@@ -345,6 +285,7 @@ const Player = () => {
                 onPlay={() => handlePlaySong(song)}
                 onPause={() => handlePause(song)}
                 isPlaying={currentSong?.id === song.id && isPlaying}
+                isActive={currentSong?.id === song.id}
               />
             ))}
           </div>

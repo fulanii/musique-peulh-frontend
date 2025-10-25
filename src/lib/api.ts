@@ -52,7 +52,7 @@ export interface User {
 class ApiService {
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
-  public API_BASE_URL =  "https://api.musiquepeulh.com"; // "http://localhost:8000"; //
+  public API_BASE_URL = "http://localhost:8000"; //  "https://api.musiquepeulh.com"; // 
 
   private getHeaders(includeAuth = false): HeadersInit {
     const headers: HeadersInit = {
