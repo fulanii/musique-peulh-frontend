@@ -23,50 +23,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const checkAuth = async () => {
-    let token = localStorage.getItem("access_token");
-    const refreshToken = localStorage.getItem("refresh_token");
+    try {
+      let token = localStorage.getItem("access_token");
+      const refreshToken = localStorage.getItem("refresh_token");
+      const userDataString = localStorage.getItem("user_data");
 
-    // If no access token but refresh token exists, try to refresh
-    if (!token && refreshToken) {
-      try {
-        await api.refreshToken();
-        token = localStorage.getItem("access_token");
-      } catch (err) {
-        // Refresh failed, clear tokens and log out
+      // If we have neither token, user is definitely not authenticated
+      if (!token && !refreshToken) {
         setIsAuthenticated(false);
         setIsAdmin(false);
-        setLoading(false);
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
         return;
       }
-    }
 
-    if (!token) {
-      setIsAuthenticated(false);
-      setIsAdmin(false);
-      setLoading(false);
-      return;
-    }
+      // If no access token but refresh token exists, try to refresh quietly
+      if (!token && refreshToken) {
+        try {
+          await api.refreshToken();
+          token = localStorage.getItem("access_token");
+        } catch (err) {
+          // Refresh failed, but don't block the app - just clear auth state
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          return;
+        }
+      }
 
-    try {
-      const userDataString = localStorage.getItem("user_data");
-      if (!userDataString) throw new Error("User not found in localStorage");
+      // Try to get user data if we have it cached
+      if (userDataString) {
+        try {
+          const userData = JSON.parse(userDataString);
+          const userId = userData.id;
 
-      const userData = JSON.parse(userDataString); // convert JSON string → object
-      const userId = userData.id; // extract id
-
-      // Now use it for your request
-      const user = await api.getCurrentUser(userId);
-
-      setIsAuthenticated(true);
-      setIsAdmin(user.is_staff || user.is_superuser);
+          // Attempt to verify user data, but don't block on failure
+          const user = await api.getCurrentUser(userId);
+          setIsAuthenticated(true);
+          setIsAdmin(user.is_staff || user.is_superuser);
+          return;
+        } catch (error) {
+          // User data verification failed - clear auth state but don't block app
+          console.error("Failed to verify user:", error);
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          localStorage.removeItem("user_data");
+        }
+      }
     } catch (error) {
-      console.error("Failed to get user:", error);
+      // Any other errors, clear auth state but don't block app
+      console.error("Auth check failed:", error);
       setIsAuthenticated(false);
       setIsAdmin(false);
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user_data");
     } finally {
       setLoading(false);
     }

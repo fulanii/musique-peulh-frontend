@@ -72,21 +72,29 @@ class ApiService {
 
   private async handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 401) {
-      // Token expired, try to refresh
-      const newToken = await this.handleTokenRefresh();
-      if (newToken) {
-        // Retry the original request with new token
-        const retryResponse = await fetch(response.url, {
-          ...response,
-          headers: {
-            ...response.headers,
-            Authorization: `Bearer ${newToken}`,
-          },
-        });
-        if (retryResponse.ok) {
-          return retryResponse.json();
+      const parsed = await response.json().catch(() => null);
+      const isTokenExpired = parsed?.code === "token_not_valid" || 
+                            parsed?.messages?.[0]?.message === "Token is expired";
+      
+      if (isTokenExpired) {
+        // Only try refresh for token expiration
+        const newToken = await this.handleTokenRefresh();
+        if (newToken) {
+          // Retry the original request with new token
+          const retryResponse = await fetch(response.url, {
+            ...response,
+            headers: {
+              ...response.headers,
+              Authorization: `Bearer ${newToken}`,
+            },
+          });
+          if (retryResponse.ok) {
+            return retryResponse.json();
+          }
         }
       }
+      // For other 401 errors or if refresh failed, throw the error
+      throw new Error(parsed?.detail || "Authentication failed");
     }
 
     if (!response.ok) {
