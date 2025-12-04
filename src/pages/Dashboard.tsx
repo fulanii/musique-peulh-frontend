@@ -82,32 +82,8 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* <Tabs defaultValue="upload" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 max-w-3xl">
-            <TabsTrigger value="upload">Upload Song</TabsTrigger>
-            <TabsTrigger value="manage">Manage Songs</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="upload" className="mt-6">
-            <UploadSong />
-          </TabsContent>
-          
-          <TabsContent value="manage" className="mt-6">
-            <ManageSongs />
-          </TabsContent>
-          
-          <TabsContent value="users" className="mt-6">
-            <UserManagement />
-          </TabsContent>
-          
-          <TabsContent value="analytics" className="mt-6">
-            <Analytics />
-          </TabsContent>
-        </Tabs> */}
         <Tabs defaultValue="upload" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 max-w-3xl">
+          <TabsList className="grid w-full grid-cols-4 max-w-3xl mx-auto">
             {/* Always visible */}
             <TabsTrigger value="upload">Upload Song</TabsTrigger>
 
