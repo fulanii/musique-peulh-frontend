@@ -80,8 +80,9 @@ const Player = () => {
                   variant="ghost"
                   onClick={handlePlayAllToggle}
                   className="flex items-center gap-2"
+                  title={currentSong && isPlaying ? "Pause" : "Play All"}
                 >
-                  {isPlaying ? (
+                  {currentSong && isPlaying ? (
                     <Pause className="w-4 h-4" />
                   ) : (
                     <Play className="w-4 h-4" />
@@ -167,12 +168,10 @@ const Player = () => {
                 variant="ghost"
                 onClick={handlePlayAllToggle}
                 className="flex items-center gap-2"
-                aria-pressed={playAllActive}
-                title={
-                  playAllActive && isPlaying ? "Pause Play All" : "Play All"
-                }
+                aria-pressed={currentSong && isPlaying}
+                title={currentSong && isPlaying ? "Pause" : "Play All"}
               >
-                {playAllActive && isPlaying ? (
+                {currentSong && isPlaying ? (
                   <Pause className="w-4 h-4" />
                 ) : (
                   <Play className="w-4 h-4" />

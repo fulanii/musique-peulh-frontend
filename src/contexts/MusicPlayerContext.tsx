@@ -24,6 +24,7 @@ interface MusicPlayerContextType {
   togglePlayAll: () => void;
   setShuffle: (shuffle: boolean) => void;
   loadSongs: () => Promise<void>;
+  clearPlayer: () => void;
 }
 
 const MusicPlayerContext = createContext<MusicPlayerContextType | undefined>(
@@ -102,23 +103,29 @@ export const MusicPlayerProvider = ({
 
   const togglePlayAll = () => {
     if (songs.length === 0) return;
-    if (playAllActive && isPlaying) {
-      // pause play-all
-      setIsPlaying(false);
-      setPlayAllActive(false);
+    
+    // If there's a current song playing, toggle pause/play
+    if (currentSong) {
+      if (isPlaying) {
+        // pause
+        setIsPlaying(false);
+        setPlayAllActive(false);
+      } else {
+        // resume/play
+        setIsPlaying(true);
+        setPlayAllActive(true);
+      }
       return;
     }
 
-    // start or resume play-all
+    // No current song - start play-all
     setPlayAllActive(true);
-    if (!currentSong || !songs.find((s) => s.id === currentSong.id)) {
-      // pick first or random based on shuffle
-      if (shuffle) {
-        const idx = Math.floor(Math.random() * songs.length);
-        setCurrentSong(songs[idx]);
-      } else {
-        setCurrentSong(songs[0]);
-      }
+    // pick first or random based on shuffle
+    if (shuffle) {
+      const idx = Math.floor(Math.random() * songs.length);
+      setCurrentSong(songs[idx]);
+    } else {
+      setCurrentSong(songs[0]);
     }
     setIsPlaying(true);
   };
@@ -126,6 +133,12 @@ export const MusicPlayerProvider = ({
   const handleSetShuffle = (newShuffle: boolean) => {
     setShuffle(newShuffle);
     toast(newShuffle ? t("shuffle_on") : t("shuffle_off"));
+  };
+
+  const clearPlayer = () => {
+    setCurrentSong(null);
+    setIsPlaying(false);
+    setPlayAllActive(false);
   };
 
   return (
@@ -145,6 +158,7 @@ export const MusicPlayerProvider = ({
         togglePlayAll,
         setShuffle: handleSetShuffle,
         loadSongs,
+        clearPlayer,
       }}
     >
       {children}

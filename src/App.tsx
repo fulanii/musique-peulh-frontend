@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { MusicPlayerProvider, useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import MusicPlayer from "@/components/MusicPlayer";
@@ -41,7 +42,15 @@ const ProtectedRoute = ({
 };
 
 const AppContent = () => {
-  const { currentSong, isPlaying, setIsPlaying, next, previous } = useMusicPlayer();
+  const { isAuthenticated } = useAuth();
+  const { currentSong, isPlaying, setIsPlaying, next, previous, clearPlayer } = useMusicPlayer();
+
+  // Clear player when user logs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      clearPlayer();
+    }
+  }, [isAuthenticated, clearPlayer]);
 
   return (
     <>
