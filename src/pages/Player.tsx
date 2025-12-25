@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Music2,
@@ -19,39 +18,27 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import MobileMenu from "@/components/MobileMenu";
-import { api, Song } from "@/lib/api";
-import { toast } from "sonner";
 import SongCard from "@/components/SongCard";
-import MusicPlayer from "@/components/MusicPlayer";
 import Footer from "@/components/Footer";
+import { Song } from "@/lib/api";
 
 const Player = () => {
   const navigate = useNavigate();
   const { logout, isAdmin } = useAuth();
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentSong, setCurrentSong] = useState<Song | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [shuffle, setShuffle] = useState(false);
-  const [playAllActive, setPlayAllActive] = useState(false);
-
-  useEffect(() => {
-    loadSongs();
-  }, []);
-
-  const loadSongs = async () => {
-    try {
-      const data = await api.getSongs();
-      setSongs(data);
-    } catch (error) {
-      toast.error(t("download_error") || "Failed to load songs");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // offline functionality removed
+  const {
+    songs,
+    loading,
+    currentSong,
+    isPlaying,
+    shuffle,
+    playAllActive,
+    playSong,
+    pauseSong,
+    togglePlayAll,
+    setShuffle,
+  } = useMusicPlayer();
 
   const handleLogout = async () => {
     await logout();
@@ -59,66 +46,15 @@ const Player = () => {
   };
 
   const handlePlaySong = (song: Song) => {
-    // playing a single song should exit "Play All" mode
-    setPlayAllActive(false);
-    setCurrentSong(song);
-    setIsPlaying(true);
+    playSong(song);
   };
-  const handlePlayAllToggle = () => {
-    if (songs.length === 0) return;
-    if (playAllActive && isPlaying) {
-      // pause play-all
-      setIsPlaying(false);
-      setPlayAllActive(false);
-      return;
-    }
 
-    // start or resume play-all
-    setPlayAllActive(true);
-    if (!currentSong || !songs.find((s) => s.id === currentSong.id)) {
-      // pick first or random based on shuffle
-      if (shuffle) {
-        const idx = Math.floor(Math.random() * songs.length);
-        setCurrentSong(songs[idx]);
-      } else {
-        setCurrentSong(songs[0]);
-      }
-    }
-    setIsPlaying(true);
-  };
   const handlePause = (song: Song) => {
-    // keep the current song selected but mark as paused
-    if (currentSong?.id === song.id) {
-      setIsPlaying(false);
-    }
+    pauseSong(song);
   };
 
-  const handleNext = () => {
-    if (!currentSong) return;
-    if (shuffle) {
-      // pick a random different song
-      if (songs.length === 1) return;
-      let idx = Math.floor(Math.random() * songs.length);
-      while (songs[idx].id === currentSong.id) {
-        idx = Math.floor(Math.random() * songs.length);
-      }
-      setCurrentSong(songs[idx]);
-      setIsPlaying(true);
-      return;
-    }
-
-    const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
-    const nextIndex = (currentIndex + 1) % songs.length;
-    setCurrentSong(songs[nextIndex]);
-    setIsPlaying(true);
-  };
-
-  const handlePrevious = () => {
-    if (!currentSong) return;
-    const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
-    const prevIndex = currentIndex === 0 ? songs.length - 1 : currentIndex - 1;
-    setCurrentSong(songs[prevIndex]);
-    setIsPlaying(true);
+  const handlePlayAllToggle = () => {
+    togglePlayAll();
   };
 
   return (
@@ -249,11 +185,7 @@ const Player = () => {
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
-                onClick={() => {
-                  const newShuffle = !shuffle;
-                  setShuffle(newShuffle);
-                  toast(newShuffle ? t("shuffle_on") : t("shuffle_off"));
-                }}
+                onClick={() => setShuffle(!shuffle)}
                 title={shuffle ? "Shuffle On" : "Shuffle Off"}
                 className={shuffle ? "text-primary" : ""}
               >
@@ -293,17 +225,6 @@ const Player = () => {
       </main>
 
       {/* <Footer /> */}
-
-      {/* Music Player */}
-      {currentSong && (
-        <MusicPlayer
-          song={currentSong}
-          onNext={handleNext}
-          onPrevious={handlePrevious}
-          isPlaying={isPlaying}
-          setIsPlaying={setIsPlaying}
-        />
-      )}
     </div>
   );
 };
