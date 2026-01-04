@@ -7,10 +7,6 @@ const translations: Record<string, Record<string, string>> = {
     song_plural: "songs",
     loading_songs: "Loading songs...",
     no_songs: "No songs yet",
-    offline_mode: "Offline mode",
-    downloading_offline: "Downloading songs for offline use...",
-    offline_ready: "Offline songs ready",
-    download_error: "Failed to download some songs for offline",
     shuffle_on: "Shuffle On",
     shuffle_off: "Shuffle Off",
   },
@@ -20,12 +16,6 @@ const translations: Record<string, Record<string, string>> = {
     song_plural: "chansons",
     loading_songs: "Chargement des chansons...",
     no_songs: "Pas encore de chansons",
-    offline_mode: "Mode hors ligne",
-    downloading_offline:
-      "Téléchargement des chansons pour utilisation hors ligne...",
-    offline_ready: "Chansons hors ligne prêtes",
-    download_error:
-      "Échec du téléchargement de certaines chansons pour l'utilisation hors ligne",
     shuffle_on: "Lecture aléatoire activée",
     shuffle_off: "Lecture aléatoire désactivée",
   },

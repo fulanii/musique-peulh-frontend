@@ -3,11 +3,13 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import { api, Song } from "@/lib/api";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MusicPlayerContextType {
   songs: Song[];
@@ -36,6 +38,7 @@ export const MusicPlayerProvider = ({
 }: {
   children: ReactNode;
 }) => {
+  const { isAuthenticated } = useAuth();
   const [songs, setSongs] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -43,20 +46,27 @@ export const MusicPlayerProvider = ({
   const [playAllActive, setPlayAllActive] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const loadSongs = async () => {
+  const loadSongs = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
     try {
       const data = await api.getSongs();
       setSongs(data);
     } catch (error) {
-      toast.error(t("download_error") || "Failed to load songs");
+      toast.error("Failed to load songs");
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated]);
 
+  // Load songs when authenticated state changes
   useEffect(() => {
     loadSongs();
-  }, []);
+  }, [loadSongs]);
 
   const playSong = (song: Song) => {
     // playing a single song should exit "Play All" mode
