@@ -207,8 +207,13 @@ const Player = () => {
             </p>
           </div>
         ) : (
-          // old css: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6
-          <div className="flex flex-row flex-wrap justify-center gap-6">
+          <div className="rounded-lg border border-border bg-card/50 overflow-hidden w-full">
+            {/* Spotify-like header row */}
+            <div className="grid grid-cols-[auto_1fr_auto] gap-4 px-3 py-2 pr-6 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border">
+              <div className="w-12" />
+              <span>Title</span>
+              <span className="tabular-nums min-w-[4rem] text-right">Duration</span>
+            </div>
             {songs.map((song) => (
               <SongCard
                 key={song.id}
