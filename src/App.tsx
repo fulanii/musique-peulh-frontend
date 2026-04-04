@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { MusicPlayerProvider, useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import MusicPlayer from "@/components/MusicPlayer";
 import Landing from "./pages/Landing";
+import ComingSoon from "./pages/ComingSoon";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import Login from "./pages/Login";
@@ -18,6 +19,12 @@ import Player from "./pages/Player";
 import Settings from "./pages/Settings";
 import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
+
+// ─── Toggle coming soon mode ──────────────────────────────────────────────────
+// Set to `true` to show the Coming Soon page for ALL routes.
+// Set to `false` to restore normal site navigation.
+const COMING_SOON = true;
+// ─────────────────────────────────────────────────────────────────────────────
 
 const queryClient = new QueryClient();
 
@@ -56,45 +63,52 @@ const AppContent = () => {
     <>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/reset-request" element={<ResetRequest />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute adminOnly>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/player"
-            element={
-              <ProtectedRoute>
-                <Player />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/chat"
-            element={
-              <ProtectedRoute>
-                <Chat />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<NotFound />} />
+          {COMING_SOON ? (
+            // All routes redirect to the Coming Soon page
+            <Route path="*" element={<ComingSoon />} />
+          ) : (
+            <>
+              <Route path="/" element={<Landing />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/reset-request" element={<ResetRequest />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/player"
+                element={
+                  <ProtectedRoute>
+                    <Player />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/chat"
+                element={
+                  <ProtectedRoute>
+                    <Chat />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </>
+          )}
         </Routes>
       </BrowserRouter>
       
