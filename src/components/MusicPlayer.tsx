@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Song } from "@/lib/api";
+import { toast } from "sonner";
+import { api, Song } from "@/lib/api";
 
 interface MusicPlayerProps {
   song: Song;
@@ -30,7 +31,7 @@ const MusicPlayer = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(80);
-  const [audioSrc, setAudioSrc] = useState<string>(song.audio_file);
+  const [audioSrc, setAudioSrc] = useState<string>("");
   const lastPrevClick = useRef<number | null>(null);
   const PREV_DOUBLE_CLICK_MS = 1200; // timeframe to go to previous track
 
@@ -43,11 +44,25 @@ const MusicPlayer = ({
   useEffect(() => {
     // Reset time when a new song is selected
     setCurrentTime(0);
-    // set audio src to the provided song URL
-    setAudioSrc(song.audio_file);
-    if (audioRef.current) {
-      audioRef.current.load();
-    }
+
+    // Fetch a fresh short-lived pre-signed streaming URL for this song.
+    // Guard against races if the user switches tracks before the request resolves.
+    let cancelled = false;
+    setAudioSrc("");
+    (async () => {
+      try {
+        const { url } = await api.getStreamUrl(song.id);
+        if (cancelled) return;
+        setAudioSrc(url);
+        if (audioRef.current) {
+          audioRef.current.load();
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error("Failed to load song");
+        }
+      }
+    })();
     // Update Media Session metadata (for OS media controls)
     if ((navigator as any).mediaSession) {
       try {
@@ -77,6 +92,10 @@ const MusicPlayer = ({
         // ignore if MediaSession not supported
       }
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [song]);
 
   // sync audio element when parent playback state changes

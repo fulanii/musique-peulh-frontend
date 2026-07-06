@@ -31,6 +31,7 @@ const ResetPassword = () => {
     e.preventDefault();
     if (!email || !code || !password || !confirm)
       return toast.error("Please fill all fields");
+    if (code.length < 6) return toast.error("Verification code must be 6 digits");
     if (password !== confirm) return toast.error("Passwords do not match");
 
     setLoading(true);
@@ -80,9 +81,14 @@ const ResetPassword = () => {
               <Input
                 id="code"
                 type="text"
+                inputMode="numeric"
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e) =>
+                  setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
                 required
+                minLength={6}
+                maxLength={6}
                 className="bg-background/50"
               />
             </div>

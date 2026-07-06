@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,14 @@ const Login = () => {
     password: "",
   });
   const [loading, setLoading] = useState(false);
+
+  // Show a notice if the user was sent here because their session expired
+  useEffect(() => {
+    if (sessionStorage.getItem("session_expired")) {
+      sessionStorage.removeItem("session_expired");
+      toast.error("Your session expired, please login again");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

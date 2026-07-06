@@ -16,17 +16,30 @@ const Register = () => {
     confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  // Flatten backend error shapes into a { field: string[] } map.
+  // Handles arrays (`{ email: [...] }`), nested objects
+  // (`{ password: { password: [...] } }`), and plain strings.
+  const flattenValue = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.map(String);
+    if (value && typeof value === "object") {
+      return Object.values(value).flatMap(flattenValue);
+    }
+    return [String(value)];
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({});
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
+      setFieldErrors({ confirmPassword: ["Passwords do not match"] });
       return;
     }
 
     if (formData.password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      setFieldErrors({ password: ["Password must be at least 8 characters"] });
       return;
     }
 
@@ -38,40 +51,49 @@ const Register = () => {
         password: formData.password,
       });
 
-      toast.success("Registration successful! Please verify your email.");
+      toast.success("Please verify your email.");
       navigate("/verify-email", { state: { email: formData.email } });
     } catch (error) {
-      let msg = "Registration failed";
-      if (error instanceof Error) {
-        // If backend attached parsed data, prefer field-level messages
-        const anyErr = error as any;
-        if (anyErr.data && typeof anyErr.data === "object") {
-          // Prefer username/email field messages if provided
-          if (anyErr.data.username) {
-            msg = Array.isArray(anyErr.data.username)
-              ? anyErr.data.username.join(" ")
-              : String(anyErr.data.username);
-          } 
-          else if (anyErr.data.email) {
-            msg = Array.isArray(anyErr.data.email)
-              ? anyErr.data.email.join(" ")
-              : String(anyErr.data.email);
-          } 
-          else if (anyErr.data.detail) {
-            msg = String(anyErr.data.detail);
-          } 
-          else {
-            msg = error.message;
+      const data = (error as any)?.data;
+      const formFields = ["email", "username", "password", "confirmPassword"];
+
+      if (data && typeof data === "object") {
+        const parsed: Record<string, string[]> = {};
+        const generalMessages: string[] = [];
+
+        for (const [field, value] of Object.entries(data)) {
+          const messages = flattenValue(value);
+          if (formFields.includes(field)) {
+            // Field-level errors render inline under their input
+            parsed[field] = messages;
+          } else {
+            // Non-field errors (error / detail / non_field_errors) go to a toast
+            generalMessages.push(...messages);
           }
-        } else {
-          msg = error.message;
         }
+
+        setFieldErrors(parsed);
+        if (generalMessages.length) {
+          toast(generalMessages.join(" "));
+        }
+      } else {
+        toast(error instanceof Error ? error.message : "Registration failed");
       }
-      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
+
+  const renderFieldErrors = (field: string) =>
+    fieldErrors[field]?.length ? (
+      <div className="space-y-1">
+        {fieldErrors[field].map((message, i) => (
+          <p key={i} className="text-sm text-destructive">
+            {message}
+          </p>
+        ))}
+      </div>
+    ) : null;
 
   return (
     <div className="min-h-screen pattern-bg flex items-center justify-center p-4">
@@ -104,6 +126,7 @@ const Register = () => {
                 required
                 className="bg-background/50"
               />
+              {renderFieldErrors("email")}
             </div>
 
             <div className="space-y-2">
@@ -119,6 +142,7 @@ const Register = () => {
                 required
                 className="bg-background/50"
               />
+              {renderFieldErrors("username")}
             </div>
 
             <div className="space-y-2">
@@ -134,6 +158,7 @@ const Register = () => {
                 required
                 className="bg-background/50"
               />
+              {renderFieldErrors("password")}
             </div>
 
             <div className="space-y-2">
@@ -149,6 +174,7 @@ const Register = () => {
                 required
                 className="bg-background/50"
               />
+              {renderFieldErrors("confirmPassword")}
             </div>
 
             <Button

@@ -23,7 +23,7 @@ import NotFound from "./pages/NotFound";
 // ─── Toggle coming soon mode ──────────────────────────────────────────────────
 // Set to `true` to show the Coming Soon page for ALL routes.
 // Set to `false` to restore normal site navigation.
-const COMING_SOON = true;
+const COMING_SOON = false;
 // ─────────────────────────────────────────────────────────────────────────────
 
 const queryClient = new QueryClient();
@@ -43,6 +43,17 @@ const ProtectedRoute = ({
 
   if (adminOnly && !isAdmin) {
     return <Navigate to="/player" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Redirect already-authenticated users away from auth pages (login/register)
+const GuestRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isAdmin } = useAuth();
+
+  if (isAuthenticated) {
+    return <Navigate to={"/player"} replace />;
   }
 
   return <>{children}</>;
@@ -69,9 +80,23 @@ const AppContent = () => {
           ) : (
             <>
               <Route path="/" element={<Landing />} />
-              <Route path="/register" element={<Register />} />
+              <Route
+                path="/register"
+                element={
+                  <GuestRoute>
+                    <Register />
+                  </GuestRoute>
+                }
+              />
               <Route path="/verify-email" element={<VerifyEmail />} />
-              <Route path="/login" element={<Login />} />
+              <Route
+                path="/login"
+                element={
+                  <GuestRoute>
+                    <Login />
+                  </GuestRoute>
+                }
+              />
               <Route path="/reset-request" element={<ResetRequest />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route

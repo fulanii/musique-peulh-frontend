@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Shield, ShieldOff } from "lucide-react";
+import { Shield } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type { User } from "@/lib/api";
@@ -49,27 +49,19 @@ const UserManagement = () => {
     }
   };
 
-  const toggleAdmin = async (userId: number, currentStatus: boolean) => {
+  const promoteToAdmin = async (userId: number) => {
     if (!isAdmin) {
       toast.error("Only admins can update user roles");
       return;
     }
 
-    if (
-      !window.confirm(
-        `Are you sure you want to ${
-          currentStatus ? "remove admin role from" : "promote"
-        } this user?`
-      )
-    ) {
+    if (!window.confirm("Are you sure you want to promote this user?")) {
       return;
     }
 
     try {
-      await api.updateUserAdmin(userId, !currentStatus);
-      toast.success(
-        `User ${currentStatus ? "removed from" : "promoted to"} admin`
-      );
+      await api.updateUserAdmin(userId, true);
+      toast.success("User promoted to admin");
       loadUsers();
     } catch (error) {
       toast.error("Failed to update user status");
@@ -162,7 +154,7 @@ const UserManagement = () => {
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => toggleAdmin(user.id, user.is_staff)}
+                        onClick={() => promoteToAdmin(user.id)}
                         className="flex items-center gap-2"
                       >
                         <>
@@ -175,29 +167,6 @@ const UserManagement = () => {
                         size="sm"
                         onClick={() => deleteUser(user.id)}
                         className="flex items-center gap-2 border-destructive text-destructive hover:bg-destructive/10"
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )}
-                  {isAdmin && user.id !== currentUserId && user.is_staff && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        disabled
-                        className="flex items-center gap-2 opacity-60 cursor-not-allowed"
-                        title="Cannot remove admin role from another admin"
-                      >
-                        <ShieldOff className="w-4 h-4" />
-                        Remove Admin
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled
-                        className="flex items-center gap-2 border-destructive text-destructive opacity-60 cursor-not-allowed"
-                        title="Cannot delete another admin"
                       >
                         Delete
                       </Button>

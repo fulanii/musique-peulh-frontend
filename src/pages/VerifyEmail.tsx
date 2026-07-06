@@ -26,6 +26,11 @@ const VerifyEmail = () => {
       return;
     }
 
+    if (formData.code.length < 6) {
+      toast.error("Verification code must be 6 digits");
+      return;
+    }
+
     setLoading(true);
     try {
       await api.verifyEmail({
@@ -82,12 +87,17 @@ const VerifyEmail = () => {
               <Input
                 id="code"
                 type="text"
+                inputMode="numeric"
                 placeholder="Enter 6-digit code"
                 value={formData.code}
                 onChange={(e) =>
-                  setFormData({ ...formData, code: e.target.value })
+                  setFormData({
+                    ...formData,
+                    code: e.target.value.replace(/\D/g, "").slice(0, 6),
+                  })
                 }
                 required
+                minLength={6}
                 maxLength={6}
                 className="bg-background/50 text-center text-2xl tracking-widest"
               />
@@ -118,8 +128,9 @@ const VerifyEmail = () => {
                   const res = await api.resendVerification(email);
                   toast.success(res.detail || "Verification code resent");
                 } catch (err) {
-                  // console.log(err.data.detail) // User is already verified.
-                  toast.error(`${err}`);
+                  toast(
+                    err instanceof Error ? err.message : "Failed to resend code"
+                  );
                 }
               }}
             >

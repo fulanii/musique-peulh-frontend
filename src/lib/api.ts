@@ -119,6 +119,7 @@ class ApiService {
       if (parsed) {
         if (typeof parsed === "string") message = parsed;
         else if (parsed.detail) message = parsed.detail;
+        else if (parsed.error) message = parsed.error;
         else if (typeof parsed === "object") {
           const parts: string[] = [];
           for (const [key, val] of Object.entries(parsed)) {
@@ -161,9 +162,15 @@ class ApiService {
     } catch (error) {
       this.isRefreshing = false;
       this.refreshSubscribers = [];
-      // Clear tokens and redirect to login
+      // Refresh token is expired/invalid — log the user out fully and send
+      // them to login. Flag the reason so the Login page can toast about it
+      // (an in-memory toast wouldn't survive the full-page redirect below).
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user_data");
+      try {
+        sessionStorage.setItem("session_expired", "1");
+      } catch {}
       try {
         window.location.assign("/login");
       } catch {}
@@ -239,7 +246,7 @@ class ApiService {
 
   async deleteUser(
     userId: number
-  ): Promise<{ success: boolean; deleted_id: number }> {
+  ): Promise<{ success: boolean; deleted_user_id: number }> {
     return this.request(
       `${this.API_BASE_URL}/api/auth/users/delete/${userId}`,
       {
@@ -368,6 +375,19 @@ class ApiService {
   async getSongsByTitle(title: string): Promise<Song[]> {
     return this.request<Song[]>(
       `${this.API_BASE_URL}/api/songs/titles/${encodeURIComponent(title)}/`,
+      {
+        headers: this.getHeaders(true),
+      }
+    );
+  }
+
+  /**
+   * Get a short-lived pre-signed streaming URL for a song.
+   * The returned URL expires after a few minutes, so fetch it right before playback.
+   */
+  async getStreamUrl(songId: number): Promise<{ url: string }> {
+    return this.request<{ url: string }>(
+      `${this.API_BASE_URL}/api/songs/stream/${songId}`,
       {
         headers: this.getHeaders(true),
       }
