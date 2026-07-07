@@ -41,9 +41,10 @@ const VerifyEmail = () => {
       toast.success("Email verified successfully!");
       navigate("/login");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Verification failed"
-      );
+      if (!(error as any)?.isRateLimit)
+        toast.error(
+          error instanceof Error ? error.message : "Verification failed"
+        );
     } finally {
       setLoading(false);
     }

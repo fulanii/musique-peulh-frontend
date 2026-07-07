@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -54,6 +55,8 @@ const Register = () => {
       toast.success("Please verify your email.");
       navigate("/verify-email", { state: { email: formData.email } });
     } catch (error) {
+      // Rate-limit toast is already shown centrally by the API layer
+      if ((error as any)?.isRateLimit) return;
       const data = (error as any)?.data;
       const formFields = ["email", "username", "password", "confirmPassword"];
 
@@ -147,9 +150,8 @@ const Register = () => {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="At least 8 characters"
                 value={formData.password}
                 onChange={(e) =>
@@ -163,9 +165,8 @@ const Register = () => {
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
+              <PasswordInput
                 id="confirmPassword"
-                type="password"
                 placeholder="Re-enter your password"
                 value={formData.confirmPassword}
                 onChange={(e) =>

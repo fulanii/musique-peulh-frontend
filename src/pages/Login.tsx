@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,6 +44,8 @@ const Login = () => {
         navigate("/player");
       }
     } catch (error) {
+      // Rate-limit toast is already shown centrally by the API layer
+      if ((error as any)?.isRateLimit) return;
       let msg = "Login failed";
       if (error instanceof Error) {
         if (error.message.includes("No active account found")) {
@@ -94,9 +97,8 @@ const Login = () => {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) =>

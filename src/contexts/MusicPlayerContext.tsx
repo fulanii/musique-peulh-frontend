@@ -18,8 +18,10 @@ interface MusicPlayerContextType {
   shuffle: boolean;
   playAllActive: boolean;
   loading: boolean;
-  playSong: (song: Song) => void;
+  playSong: (song: Song, list?: Song[]) => void;
   pauseSong: (song: Song) => void;
+  playList: (list: Song[]) => void;
+  togglePlayList: (list: Song[]) => void;
   next: () => void;
   previous: () => void;
   setIsPlaying: (playing: boolean) => void;
@@ -45,19 +47,21 @@ export const MusicPlayerProvider = ({
   const [shuffle, setShuffle] = useState(false);
   const [playAllActive, setPlayAllActive] = useState(false);
   const [loading, setLoading] = useState(true);
+  // The list the player advances through (a playlist or the full library).
+  const [queue, setQueue] = useState<Song[]>([]);
 
   const loadSongs = useCallback(async () => {
     if (!isAuthenticated) {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     try {
       const data = await api.getSongs();
       setSongs(data);
     } catch (error) {
-      toast.error("Failed to load songs");
+      if (!(error as any)?.isRateLimit) toast.error("Failed to load songs");
     } finally {
       setLoading(false);
     }
@@ -68,9 +72,14 @@ export const MusicPlayerProvider = ({
     loadSongs();
   }, [loadSongs]);
 
-  const playSong = (song: Song) => {
+  // The active playback list — the queue if one was set, else the full library.
+  const activeList = () => (queue.length > 0 ? queue : songs);
+
+  const playSong = (song: Song, list?: Song[]) => {
     // playing a single song should exit "Play All" mode
     setPlayAllActive(false);
+    // scope subsequent next/previous to the list this song came from
+    setQueue(list && list.length ? list : [song]);
     setCurrentSong(song);
     setIsPlaying(true);
   };
@@ -82,63 +91,65 @@ export const MusicPlayerProvider = ({
     }
   };
 
+  // Start playing a whole list from the top (or a random track if shuffling).
+  const playList = (list: Song[]) => {
+    if (list.length === 0) return;
+    setQueue(list);
+    setPlayAllActive(true);
+    const start = shuffle
+      ? list[Math.floor(Math.random() * list.length)]
+      : list[0];
+    setCurrentSong(start);
+    setIsPlaying(true);
+  };
+
+  // Play/pause a list: if a track from it is current, toggle; otherwise start it.
+  const togglePlayList = (list: Song[]) => {
+    if (list.length === 0) return;
+    const currentInList =
+      currentSong && list.some((s) => s.id === currentSong.id);
+    if (currentInList) {
+      setQueue(list);
+      setIsPlaying(!isPlaying);
+      setPlayAllActive(!isPlaying);
+      return;
+    }
+    playList(list);
+  };
+
   const next = () => {
-    if (!currentSong || songs.length === 0) return;
+    const list = activeList();
+    if (!currentSong || list.length === 0) return;
 
     if (shuffle) {
       // pick a random different song
-      if (songs.length === 1) return;
-      let idx = Math.floor(Math.random() * songs.length);
-      while (songs[idx].id === currentSong.id) {
-        idx = Math.floor(Math.random() * songs.length);
+      if (list.length === 1) return;
+      let idx = Math.floor(Math.random() * list.length);
+      while (list[idx].id === currentSong.id) {
+        idx = Math.floor(Math.random() * list.length);
       }
-      setCurrentSong(songs[idx]);
+      setCurrentSong(list[idx]);
       setIsPlaying(true);
       return;
     }
 
-    const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
-    const nextIndex = (currentIndex + 1) % songs.length;
-    setCurrentSong(songs[nextIndex]);
+    const currentIndex = list.findIndex((s) => s.id === currentSong.id);
+    const nextIndex = (currentIndex + 1) % list.length;
+    setCurrentSong(list[nextIndex]);
     setIsPlaying(true);
   };
 
   const previous = () => {
-    if (!currentSong || songs.length === 0) return;
-    const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
-    const prevIndex = currentIndex === 0 ? songs.length - 1 : currentIndex - 1;
-    setCurrentSong(songs[prevIndex]);
+    const list = activeList();
+    if (!currentSong || list.length === 0) return;
+    const currentIndex = list.findIndex((s) => s.id === currentSong.id);
+    const prevIndex = currentIndex <= 0 ? list.length - 1 : currentIndex - 1;
+    setCurrentSong(list[prevIndex]);
     setIsPlaying(true);
   };
 
-  const togglePlayAll = () => {
-    if (songs.length === 0) return;
-    
-    // If there's a current song playing, toggle pause/play
-    if (currentSong) {
-      if (isPlaying) {
-        // pause
-        setIsPlaying(false);
-        setPlayAllActive(false);
-      } else {
-        // resume/play
-        setIsPlaying(true);
-        setPlayAllActive(true);
-      }
-      return;
-    }
-
-    // No current song - start play-all
-    setPlayAllActive(true);
-    // pick first or random based on shuffle
-    if (shuffle) {
-      const idx = Math.floor(Math.random() * songs.length);
-      setCurrentSong(songs[idx]);
-    } else {
-      setCurrentSong(songs[0]);
-    }
-    setIsPlaying(true);
-  };
+  // Convenience for the full library ("All Songs").
+  const togglePlayAll = () => togglePlayList(songs);
 
   const handleSetShuffle = (newShuffle: boolean) => {
     setShuffle(newShuffle);
@@ -149,6 +160,7 @@ export const MusicPlayerProvider = ({
     setCurrentSong(null);
     setIsPlaying(false);
     setPlayAllActive(false);
+    setQueue([]);
   };
 
   return (
@@ -162,6 +174,8 @@ export const MusicPlayerProvider = ({
         loading,
         playSong,
         pauseSong,
+        playList,
+        togglePlayList,
         next,
         previous,
         setIsPlaying,
@@ -183,4 +197,3 @@ export const useMusicPlayer = () => {
   }
   return context;
 };
-

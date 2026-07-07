@@ -1,60 +1,88 @@
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Music2,
   LogOut,
   Settings,
-  Menu,
-  Play,
-  Pause,
-  Shuffle,
   MessageSquare,
+  ChevronRight,
+  LayoutGrid,
+  List,
+  Plus,
+  ListMusic,
 } from "lucide-react";
-import { t } from "@/lib/i18n";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import MobileMenu from "@/components/MobileMenu";
-import SongCard from "@/components/SongCard";
-import Footer from "@/components/Footer";
-import { Song } from "@/lib/api";
+import { api, Playlist } from "@/lib/api";
+
+type PlaylistView = "card" | "row";
 
 const Player = () => {
   const navigate = useNavigate();
   const { logout, isAdmin } = useAuth();
-  const {
-    songs,
-    loading,
-    currentSong,
-    isPlaying,
-    shuffle,
-    playAllActive,
-    playSong,
-    pauseSong,
-    togglePlayAll,
-    setShuffle,
-  } = useMusicPlayer();
+
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [loadingPlaylists, setLoadingPlaylists] = useState(true);
+  const [view, setView] = useState<PlaylistView>("card");
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const handleLogout = async () => {
     await logout();
     navigate("/");
   };
 
-  const handlePlaySong = (song: Song) => {
-    playSong(song);
-  };
+  const loadPlaylists = useCallback(async () => {
+    setLoadingPlaylists(true);
+    try {
+      const data = await api.getPlaylists();
+      setPlaylists(data);
+    } catch (error) {
+      if (!(error as any)?.isRateLimit) toast.error("Failed to load playlists");
+    } finally {
+      setLoadingPlaylists(false);
+    }
+  }, []);
 
-  const handlePause = (song: Song) => {
-    pauseSong(song);
-  };
+  useEffect(() => {
+    loadPlaylists();
+  }, [loadPlaylists]);
 
-  const handlePlayAllToggle = () => {
-    togglePlayAll();
+  const handleCreatePlaylist = async () => {
+    const name = newName.trim();
+    if (name.length < 3) {
+      toast.error("Playlist name must be at least 3 characters");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      await api.createPlaylist(name);
+      toast.success("Playlist created");
+      setNewName("");
+      setCreateOpen(false);
+      await loadPlaylists();
+    } catch (error) {
+      if (!(error as any)?.isRateLimit)
+        toast.error(
+          error instanceof Error ? error.message : "Failed to create playlist"
+        );
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -74,34 +102,6 @@ const Player = () => {
             </Link>
 
             <div className="flex items-center gap-4">
-              <div className="hidden sm:flex items-center gap-2">
-                {/* Play All button: shows Play or Pause depending on playback state */}
-                <Button
-                  variant="ghost"
-                  onClick={handlePlayAllToggle}
-                  className="flex items-center gap-2"
-                  title={currentSong && isPlaying ? "Pause" : "Play All"}
-                >
-                  {currentSong && isPlaying ? (
-                    <Pause className="w-4 h-4" />
-                  ) : (
-                    <Play className="w-4 h-4" />
-                  )}
-                </Button>
-
-                {/* Shuffle toggle as an icon button */}
-                <Button
-                  variant="ghost"
-                  onClick={() => setShuffle(!shuffle)}
-                  className={`flex items-center gap-2 ${
-                    shuffle ? "text-primary" : ""
-                  }`}
-                  aria-pressed={shuffle}
-                  title={shuffle ? "Shuffle On" : "Shuffle Off"}
-                >
-                  <Shuffle className="w-4 h-4" />
-                </Button>
-              </div>
               {/* Desktop buttons - hidden on small screens */}
               <div className="hidden sm:flex items-center gap-4">
                 {isAdmin && (
@@ -151,84 +151,169 @@ const Player = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 flex-1">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Music Library</h1>
-          <p className="text-muted-foreground">
-            {t("songs_available", {
-              count: songs.length,
-              plural:
-                songs.length === 1 ? t("song_singular") : t("song_plural"),
-            })}
-          </p>
+        {/* Title + view toggle + create */}
+        <div className="flex items-center justify-between gap-4 mb-8">
+          <h1 className="text-3xl font-bold">Music Library</h1>
 
-          <div className="mt-4 flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              {/* Play All button (considers shuffle when starting) */}
-              <Button
-                variant="ghost"
-                onClick={handlePlayAllToggle}
-                className="flex items-center gap-2"
-                aria-pressed={currentSong && isPlaying}
-                title={currentSong && isPlaying ? "Pause" : "Play All"}
+          <div className="flex items-center gap-2">
+            {/* Card / Row view toggle */}
+            <div className="flex items-center rounded-md border border-border overflow-hidden">
+              <button
+                onClick={() => setView("card")}
+                aria-pressed={view === "card"}
+                title="Card view"
+                className={`p-2 transition-colors ${
+                  view === "card"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted/60"
+                }`}
               >
-                {currentSong && isPlaying ? (
-                  <Pause className="w-4 h-4" />
-                ) : (
-                  <Play className="w-4 h-4" />
-                )}
-              </Button>
-
-              {/* offline mode removed */}
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setView("row")}
+                aria-pressed={view === "row"}
+                title="Row view"
+                className={`p-2 transition-colors border-l border-border ${
+                  view === "row"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted/60"
+                }`}
+              >
+                <List className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                onClick={() => setShuffle(!shuffle)}
-                title={shuffle ? "Shuffle On" : "Shuffle Off"}
-                className={shuffle ? "text-primary" : ""}
-              >
-                <Shuffle className="w-4 h-4" />
-              </Button>
-            </div>
+            {/* Create playlist */}
+            <Button
+              onClick={() => setCreateOpen(true)}
+              className="hero-gradient text-primary-foreground hover:opacity-90"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Create Playlist</span>
+            </Button>
           </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading songs...</p>
-          </div>
-        ) : songs.length === 0 ? (
-          <div className="text-center py-12 card-gradient rounded-xl border border-border">
-            <Music2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <p className="text-xl font-semibold mb-2">No songs yet</p>
-            <p className="text-muted-foreground">
-              Check back soon for new music!
-            </p>
+        {view === "card" ? (
+          /* Card view - All Songs first, then playlists, wrapping */
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(175px,1fr))] gap-3 sm:gap-4">
+            {/* All Songs (a built-in playlist) */}
+            <button
+              onClick={() => navigate("/songs")}
+              className="card-gradient border border-border rounded-xl p-4 text-left transition-colors hover:border-primary/40"
+            >
+              <div className="w-full aspect-square rounded-lg hero-gradient flex items-center justify-center mb-3">
+                <Music2 className="w-10 h-10 text-primary-foreground" />
+              </div>
+              <p className="font-semibold truncate">All Songs</p>
+              <p className="text-xs text-muted-foreground">Full library</p>
+            </button>
+
+            {/* User playlists */}
+            {playlists.map((playlist) => (
+              <button
+                key={playlist.id}
+                onClick={() =>
+                  navigate(`/playlist/${playlist.id}`, {
+                    state: { name: playlist.playlist_name },
+                  })
+                }
+                className="card-gradient border border-border rounded-xl p-4 text-left transition-colors hover:border-primary/40"
+              >
+                <div className="w-full aspect-square rounded-lg hero-gradient flex items-center justify-center mb-3">
+                  <ListMusic className="w-10 h-10 text-primary-foreground" />
+                </div>
+                <p className="font-semibold truncate capitalize">
+                  {playlist.playlist_name}
+                </p>
+                <p className="text-xs text-muted-foreground">Playlist</p>
+              </button>
+            ))}
           </div>
         ) : (
+          /* Row view - All Songs first, then playlists */
           <div className="rounded-lg border border-border bg-card/50 overflow-hidden w-full">
-            {/* Spotify-like header row */}
-            <div className="grid grid-cols-[auto_1fr_auto] gap-4 px-3 py-2 pr-6 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border">
-              <div className="w-12" />
-              <span>Title</span>
-              <span className="tabular-nums min-w-[4rem] text-right">Duration</span>
-            </div>
-            {songs.map((song) => (
-              <SongCard
-                key={song.id}
-                song={song}
-                onPlay={() => handlePlaySong(song)}
-                onPause={() => handlePause(song)}
-                isPlaying={currentSong?.id === song.id && isPlaying}
-                isActive={currentSong?.id === song.id}
-              />
+            <button
+              onClick={() => navigate("/songs")}
+              className="flex items-center gap-3 px-4 py-3 w-full text-left border-b border-border/50 last:border-0 transition-colors hover:bg-muted/60"
+            >
+              <div className="w-10 h-10 rounded hero-gradient flex items-center justify-center flex-shrink-0">
+                <Music2 className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <span className="font-medium truncate">All Songs</span>
+              <ChevronRight className="w-5 h-5 text-muted-foreground ml-auto flex-shrink-0" />
+            </button>
+
+            {playlists.map((playlist) => (
+              <button
+                key={playlist.id}
+                onClick={() =>
+                  navigate(`/playlist/${playlist.id}`, {
+                    state: { name: playlist.playlist_name },
+                  })
+                }
+                className="flex items-center gap-3 px-4 py-3 w-full text-left border-b border-border/50 last:border-0 transition-colors hover:bg-muted/60"
+              >
+                <div className="w-10 h-10 rounded hero-gradient flex items-center justify-center flex-shrink-0">
+                  <ListMusic className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <span className="font-medium truncate capitalize">
+                  {playlist.playlist_name}
+                </span>
+                <ChevronRight className="w-5 h-5 text-muted-foreground ml-auto flex-shrink-0" />
+              </button>
             ))}
           </div>
         )}
+
+        {loadingPlaylists && (
+          <p className="text-muted-foreground text-sm mt-4">
+            Loading playlists...
+          </p>
+        )}
       </main>
 
-      {/* <Footer /> */}
+      {/* Create playlist dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-lg max-h-[85dvh] overflow-y-auto top-24 translate-y-0 sm:top-1/2 sm:-translate-y-1/2">
+          <DialogHeader>
+            <DialogTitle>Create Playlist</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            <Label htmlFor="playlist_name">Playlist name</Label>
+            <Input
+              id="playlist_name"
+              placeholder="My playlist"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreatePlaylist();
+              }}
+              autoFocus
+              className="bg-background/50"
+            />
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setCreateOpen(false)}
+              disabled={creating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreatePlaylist}
+              disabled={creating || newName.trim().length < 3}
+              className="hero-gradient text-primary-foreground hover:opacity-90"
+            >
+              {creating ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

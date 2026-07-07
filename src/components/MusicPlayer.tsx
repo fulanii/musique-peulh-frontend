@@ -58,7 +58,7 @@ const MusicPlayer = ({
           audioRef.current.load();
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!cancelled && !(error as any)?.isRateLimit) {
           toast.error("Failed to load song");
         }
       }

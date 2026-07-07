@@ -23,6 +23,7 @@ const ResetRequest = () => {
       );
       navigate("/reset-password", { state: { email } });
     } catch (err) {
+      if ((err as any)?.isRateLimit) return;
       const msg = err instanceof Error ? err.message : "Request failed";
       toast.error(msg);
     } finally {

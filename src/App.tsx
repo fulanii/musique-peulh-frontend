@@ -16,6 +16,8 @@ import ResetRequest from "./pages/ResetRequest";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Player from "./pages/Player";
+import AllSongs from "./pages/AllSongs";
+import PlaylistDetail from "./pages/PlaylistDetail";
 import Settings from "./pages/Settings";
 import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
@@ -112,6 +114,22 @@ const AppContent = () => {
                 element={
                   <ProtectedRoute>
                     <Player />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/songs"
+                element={
+                  <ProtectedRoute>
+                    <AllSongs />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/playlist/:id"
+                element={
+                  <ProtectedRoute>
+                    <PlaylistDetail />
                   </ProtectedRoute>
                 }
               />

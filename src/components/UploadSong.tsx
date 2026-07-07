@@ -44,7 +44,8 @@ const UploadSong = () => {
       const fileInputs = document.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>;
       fileInputs.forEach(input => input.value = '');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Upload failed');
+      if (!(error as any)?.isRateLimit)
+        toast.error(error instanceof Error ? error.message : 'Upload failed');
     } finally {
       setLoading(false);
     }

@@ -43,7 +43,7 @@ const UserManagement = () => {
       const data = await api.getUsers();
       setUsers(data);
     } catch (error) {
-      toast.error("Failed to load users");
+      if (!(error as any)?.isRateLimit) toast.error("Failed to load users");
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,7 @@ const UserManagement = () => {
       toast.success("User promoted to admin");
       loadUsers();
     } catch (error) {
-      toast.error("Failed to update user status");
+      if (!(error as any)?.isRateLimit) toast.error("Failed to update user status");
     }
   };
 
@@ -95,7 +95,7 @@ const UserManagement = () => {
         toast.error("Failed to delete user");
       }
     } catch (error) {
-      toast.error("Failed to delete user");
+      if (!(error as any)?.isRateLimit) toast.error("Failed to delete user");
     }
   };
 

@@ -37,7 +37,7 @@ const ManageSongs = () => {
       const data = await api.getSongs();
       setSongs(data);
     } catch (error) {
-      toast.error("Failed to load songs");
+      if (!(error as any)?.isRateLimit) toast.error("Failed to load songs");
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -45,6 +46,7 @@ const ResetPassword = () => {
         toast.error(res.error || "Failed to reset password");
       }
     } catch (err) {
+      if ((err as any)?.isRateLimit) return;
       const msg = err instanceof Error ? err.message : "Request failed";
       toast.error(msg);
     } finally {
@@ -95,9 +97,8 @@ const ResetPassword = () => {
 
             <div className="space-y-2">
               <Label htmlFor="password">New Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -107,9 +108,8 @@ const ResetPassword = () => {
 
             <div className="space-y-2">
               <Label htmlFor="confirm">Confirm New Password</Label>
-              <Input
+              <PasswordInput
                 id="confirm"
-                type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 required

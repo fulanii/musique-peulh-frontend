@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 export interface RegisterData {
   email: string;
   username: string;
@@ -33,6 +35,13 @@ export interface Song {
   upload_date: string;
 }
 
+export interface Playlist {
+  id: number;
+  playlist_name: string;
+  playlist_owner_id: number;
+  created_date: string;
+}
+
 export interface AuthTokens {
   access: string;
   refresh: string;
@@ -52,7 +61,7 @@ export interface User {
 class ApiService {
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
-  public API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  public API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
   private getHeaders(includeAuth = false): HeadersInit {
     const headers: HeadersInit = {
@@ -115,6 +124,23 @@ class ApiService {
     // If still not ok, parse error body and throw
     if (!response.ok) {
       const parsed = await response.json().catch(() => null);
+
+      // Rate limited — surface a generic message for ANY endpoint. Toast here
+      // at the source so it shows even when a caller swallows the thrown error
+      // with its own message. Fixed id prevents duplicate/stacked toasts.
+      if (response.status === 429) {
+        toast.error("Too many request, try again later", {
+          id: "rate-limit",
+        });
+        const err = new Error("Too many request, try again later");
+        try {
+          (err as any).data = parsed;
+          (err as any).status = 429;
+          (err as any).isRateLimit = true;
+        } catch {}
+        throw err;
+      }
+
       let message = response.statusText || "Request failed";
       if (parsed) {
         if (typeof parsed === "string") message = parsed;
@@ -392,6 +418,50 @@ class ApiService {
         headers: this.getHeaders(true),
       }
     );
+  }
+
+  async getPlaylists(): Promise<Playlist[]> {
+    const data = await this.request<any>(
+      `${this.API_BASE_URL}/api/songs/playlist/`,
+      {
+        headers: this.getHeaders(true),
+      }
+    );
+    // Backend returns a list of playlists, but {"detail": []} when the user has none
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.detail)) return data.detail;
+    return [];
+  }
+
+  async createPlaylist(playlistName: string): Promise<{ detail: string }> {
+    return this.request(`${this.API_BASE_URL}/api/songs/playlist/`, {
+      method: "POST",
+      headers: this.getHeaders(true),
+      body: JSON.stringify({ playlist_name: playlistName }),
+    });
+  }
+
+  async getPlaylistSongs(playlistId: number): Promise<Song[]> {
+    const data = await this.request<any[]>(
+      `${this.API_BASE_URL}/api/songs/playlist/${playlistId}/songs/`,
+      {
+        headers: this.getHeaders(true),
+      }
+    );
+    const list = Array.isArray(data) ? data : [];
+    // The playlist-songs endpoint returns a trimmed shape (id/title/artist/duration).
+    // Fill the remaining Song fields so it satisfies the Song type; playback only
+    // needs the id (streaming URL is fetched separately at play time).
+    return list.map((s) => ({
+      id: s.id,
+      title: s.title,
+      artist_name: s.artist_name,
+      duration: s.duration,
+      audio_file: "",
+      cover_image: "",
+      uploaded_by: "",
+      upload_date: "",
+    }));
   }
 }
 
