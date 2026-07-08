@@ -1,21 +1,76 @@
-import { Pause, MoreVertical } from "lucide-react";
+import { useState } from "react";
+import { Pause, MoreVertical, Plus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
-import { Song } from "@/lib/api";
+import { api, Playlist, Song } from "@/lib/api";
 
 interface SongRowProps {
   song: Song;
   isActive: boolean;
   isPlaying: boolean;
   onClick: () => void;
+  // When rendered inside a playlist, enables "Remove From Playlist".
+  playlistId?: number;
+  onRemoved?: () => void;
 }
 
-const SongRow = ({ song, isActive, isPlaying, onClick }: SongRowProps) => {
+const SongRow = ({
+  song,
+  isActive,
+  isPlaying,
+  onClick,
+  playlistId,
+  onRemoved,
+}: SongRowProps) => {
   const rowPlaying = isActive && isPlaying;
+
+  // Only fetch the playlist list once the row's menu is opened (and reuse the
+  // shared cache if the Player page already loaded it). Avoids fetching
+  // playlists just because a page full of song rows rendered.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { data: playlists = [] } = useQuery({
+    queryKey: ["playlists"],
+    queryFn: () => api.getPlaylists(),
+    enabled: menuOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const handleAddToPlaylist = async (playlist: Playlist) => {
+    try {
+      await api.addSongToPlaylist(playlist.id, song.id);
+      toast.success(`Added to ${playlist.playlist_name}`);
+    } catch (error) {
+      if (!(error as any)?.isRateLimit)
+        toast.error(
+          error instanceof Error ? error.message : "Failed to add to playlist"
+        );
+    }
+  };
+
+  const handleRemoveFromPlaylist = async () => {
+    if (playlistId == null) return;
+    try {
+      await api.removeSongFromPlaylist(playlistId, song.id);
+      toast.success("Removed from playlist");
+      onRemoved?.();
+    } catch (error) {
+      if (!(error as any)?.isRateLimit)
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to remove from playlist"
+        );
+    }
+  };
 
   return (
     <div
@@ -53,7 +108,7 @@ const SongRow = ({ song, isActive, isPlaying, onClick }: SongRowProps) => {
       </span>
 
       {/* Options menu */}
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
           <button
             onClick={(e) => e.stopPropagation()}
@@ -63,10 +118,44 @@ const SongRow = ({ song, isActive, isPlaying, onClick }: SongRowProps) => {
             <MoreVertical className="w-4 h-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {/* Disabled until the backend endpoints exist */}
-          <DropdownMenuItem disabled>Add To Playlist</DropdownMenuItem>
-          <DropdownMenuItem disabled>Remove From Playlist</DropdownMenuItem>
+        <DropdownMenuContent
+          align="end"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Plus className="w-4 h-4 mr-2" />
+              Add To Playlist
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent
+              className="max-h-64 overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {playlists.length === 0 ? (
+                <DropdownMenuItem disabled>No playlists yet</DropdownMenuItem>
+              ) : (
+                playlists.map((playlist) => (
+                  <DropdownMenuItem
+                    key={playlist.id}
+                    className="capitalize"
+                    onClick={() => handleAddToPlaylist(playlist)}
+                  >
+                    {playlist.playlist_name}
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
+          {/* Only shown inside a playlist */}
+          {playlistId != null && (
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={handleRemoveFromPlaylist}
+            >
+              Remove From Playlist
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

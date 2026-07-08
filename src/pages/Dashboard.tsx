@@ -2,7 +2,17 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Music2, LogOut, Play, Menu } from "lucide-react";
+import {
+  Music2,
+  LogOut,
+  Play,
+  Menu,
+  Upload,
+  Youtube,
+  ListMusic,
+  Users as UsersIcon,
+  BarChart3,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -83,47 +93,47 @@ const Dashboard = () => {
         </div>
 
         <Tabs defaultValue="upload" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 max-w-3xl mx-auto">
-            {/* Always visible */}
-            <TabsTrigger value="upload">Upload Song</TabsTrigger>
-
-            {/* Hidden below 800px (~md breakpoint = 768px) */}
-            <TabsTrigger value="manage" className="hidden dash-m-hidden:block">
-              Manage Songs
-            </TabsTrigger>
-            <TabsTrigger value="users" className="hidden dash-m-hidden:block">
-              Users
-            </TabsTrigger>
-            <TabsTrigger
-              value="analytics"
-              className="hidden dash-m-hidden:block"
-            >
-              Analytics
-            </TabsTrigger>
+          <TabsList className="flex flex-wrap justify-center gap-2 h-auto bg-transparent p-0 rounded-none mb-2">
+            {[
+              { value: "upload", label: "Upload Song", Icon: Upload },
+              { value: "youtube", label: "YouTube Upload", Icon: Youtube },
+              { value: "manage", label: "Manage Songs", Icon: ListMusic },
+              { value: "users", label: "Users", Icon: UsersIcon },
+              { value: "analytics", label: "Analytics", Icon: BarChart3 },
+            ].map(({ value, label, Icon }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="gap-2 rounded-full border border-border bg-card/50 px-4 py-2 text-xs sm:text-sm text-muted-foreground transition-colors hover:text-foreground hover:border-primary/40 data-[state=active]:bg-transparent data-[state=active]:hero-gradient data-[state=active]:text-primary-foreground data-[state=active]:border-transparent data-[state=active]:shadow"
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="upload" className="mt-6">
             <UploadSong />
           </TabsContent>
 
-          <TabsContent
-            value="manage"
-            className="mt-6 hidden dash-m-hidden:block"
-          >
+          <TabsContent value="youtube" className="mt-6">
+            {/* Backend not ready yet — placeholder */}
+            <div className="text-center py-16 card-gradient rounded-xl border border-border">
+              <Music2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <p className="text-xl font-semibold mb-2">YouTube Upload</p>
+              <p className="text-muted-foreground">Coming soon.</p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="manage" className="mt-6">
             <ManageSongs />
           </TabsContent>
 
-          <TabsContent
-            value="users"
-            className="mt-6 hidden dash-m-hidden:block"
-          >
+          <TabsContent value="users" className="mt-6">
             <UserManagement />
           </TabsContent>
 
-          <TabsContent
-            value="analytics"
-            className="mt-6 hidden dash-m-hidden:block"
-          >
+          <TabsContent value="analytics" className="mt-6">
             <Analytics />
           </TabsContent>
         </Tabs>

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { api, Song } from "@/lib/api";
+import { getDefaultCover } from "@/lib/defaultCover";
 
 interface MusicPlayerProps {
   song: Song;
@@ -81,9 +82,15 @@ const MusicPlayer = ({
           title: song.title,
           artist: song.artist_name,
           album: "",
-          artwork: song.cover_image
-            ? [{ src: song.cover_image, sizes: "512x512", type: "image/png" }]
-            : [],
+          // Fall back to a branded default cover so OS media controls don't
+          // show the site favicon when a song has no cover image.
+          artwork: [
+            {
+              src: song.cover_image || getDefaultCover(),
+              sizes: "512x512",
+              type: "image/png",
+            },
+          ],
         });
 
         (navigator as any).mediaSession.setActionHandler("play", () =>

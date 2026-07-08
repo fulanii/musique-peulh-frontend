@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Music2,
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import MobileMenu from "@/components/MobileMenu";
-import { api, Playlist } from "@/lib/api";
+import { api } from "@/lib/api";
 
 type PlaylistView = "card" | "row";
 
@@ -32,34 +33,45 @@ const Player = () => {
   const navigate = useNavigate();
   const { logout, isAdmin } = useAuth();
 
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [loadingPlaylists, setLoadingPlaylists] = useState(true);
-  const [view, setView] = useState<PlaylistView>("card");
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<PlaylistView>(() => {
+    const saved = localStorage.getItem("playlist_view");
+    return saved === "row" || saved === "card" ? saved : "card";
+  });
+
+  // Remember the user's card/row layout preference
+  useEffect(() => {
+    localStorage.setItem("playlist_view", view);
+  }, [view]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // Cached across navigation — remounting the page reuses the data instead of
+  // showing "Loading playlists" every time.
+  const {
+    data: playlists = [],
+    isLoading: loadingPlaylists,
+    isError,
+    error: playlistsError,
+  } = useQuery({
+    queryKey: ["playlists"],
+    queryFn: () => api.getPlaylists(),
+    staleTime: 5 * 60 * 1000, // treat as fresh for 5 min (no refetch on remount)
+    gcTime: 30 * 60 * 1000, // keep in cache for 30 min after leaving the page
+  });
+
+  useEffect(() => {
+    if (isError && !(playlistsError as any)?.isRateLimit) {
+      toast.error("Failed to load playlists");
+    }
+  }, [isError, playlistsError]);
+
   const handleLogout = async () => {
     await logout();
     navigate("/");
   };
-
-  const loadPlaylists = useCallback(async () => {
-    setLoadingPlaylists(true);
-    try {
-      const data = await api.getPlaylists();
-      setPlaylists(data);
-    } catch (error) {
-      if (!(error as any)?.isRateLimit) toast.error("Failed to load playlists");
-    } finally {
-      setLoadingPlaylists(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadPlaylists();
-  }, [loadPlaylists]);
 
   const handleCreatePlaylist = async () => {
     const name = newName.trim();
@@ -74,7 +86,8 @@ const Player = () => {
       toast.success("Playlist created");
       setNewName("");
       setCreateOpen(false);
-      await loadPlaylists();
+      // Refresh the cached list so the new playlist shows up
+      await queryClient.invalidateQueries({ queryKey: ["playlists"] });
     } catch (error) {
       if (!(error as any)?.isRateLimit)
         toast.error(

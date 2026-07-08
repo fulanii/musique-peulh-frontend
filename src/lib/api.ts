@@ -147,14 +147,16 @@ class ApiService {
         else if (parsed.detail) message = parsed.detail;
         else if (parsed.error) message = parsed.error;
         else if (typeof parsed === "object") {
+          // Only surface the message(s), not the field name (e.g. DRF
+          // validation errors like {"email": ["This field is required."]}).
           const parts: string[] = [];
-          for (const [key, val] of Object.entries(parsed)) {
-            if (Array.isArray(val)) parts.push(`${key}: ${val.join(" ")}`);
-            else if (typeof val === "object")
-              parts.push(`${key}: ${JSON.stringify(val)}`);
-            else parts.push(`${key}: ${String(val)}`);
+          for (const val of Object.values(parsed)) {
+            if (Array.isArray(val)) parts.push(val.join(" "));
+            else if (typeof val === "object" && val !== null)
+              parts.push(JSON.stringify(val));
+            else parts.push(String(val));
           }
-          if (parts.length) message = parts.join(" | ");
+          if (parts.length) message = parts.join(" ");
         }
       }
       const err = new Error(message || "Request failed");
@@ -439,6 +441,53 @@ class ApiService {
       headers: this.getHeaders(true),
       body: JSON.stringify({ playlist_name: playlistName }),
     });
+  }
+
+  async updatePlaylist(
+    playlistId: number,
+    newName: string
+  ): Promise<{ detail: string }> {
+    return this.request(`${this.API_BASE_URL}/api/songs/playlist/`, {
+      method: "PATCH",
+      headers: this.getHeaders(true),
+      body: JSON.stringify({
+        playlist_id: playlistId,
+        new_playlist_name: newName,
+      }),
+    });
+  }
+
+  async deletePlaylist(playlistId: number): Promise<{ detail: string }> {
+    return this.request(`${this.API_BASE_URL}/api/songs/playlist/${playlistId}/`, {
+      method: "DELETE",
+      headers: this.getHeaders(true),
+    });
+  }
+
+  async addSongToPlaylist(
+    playlistId: number,
+    songId: number
+  ): Promise<{ detail: string }> {
+    return this.request(
+      `${this.API_BASE_URL}/api/songs/playlist/${playlistId}/songs/${songId}/`,
+      {
+        method: "PATCH",
+        headers: this.getHeaders(true),
+      }
+    );
+  }
+
+  async removeSongFromPlaylist(
+    playlistId: number,
+    songId: number
+  ): Promise<{ detail: string }> {
+    return this.request(
+      `${this.API_BASE_URL}/api/songs/playlist/${playlistId}/songs/${songId}/`,
+      {
+        method: "DELETE",
+        headers: this.getHeaders(true),
+      }
+    );
   }
 
   async getPlaylistSongs(playlistId: number): Promise<Song[]> {
