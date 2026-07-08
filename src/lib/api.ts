@@ -409,6 +409,22 @@ class ApiService {
     );
   }
 
+  async editSong(
+    songId: number,
+    newTitle: string,
+    newArtistName: string
+  ): Promise<{ detail: string }> {
+    return this.request(`${this.API_BASE_URL}/api/songs/edit/`, {
+      method: "PATCH",
+      headers: this.getHeaders(true),
+      body: JSON.stringify({
+        song_id: songId,
+        new_title: newTitle,
+        new_artist_name: newArtistName,
+      }),
+    });
+  }
+
   /**
    * Get a short-lived pre-signed streaming URL for a song.
    * The returned URL expires after a few minutes, so fetch it right before playback.

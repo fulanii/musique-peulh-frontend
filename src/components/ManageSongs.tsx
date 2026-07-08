@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { api, Song } from "@/lib/api";
@@ -27,6 +28,7 @@ const ManageSongs = () => {
   const [editSong, setEditSong] = useState<Song | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editArtist, setEditArtist] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadSongs();
@@ -40,6 +42,31 @@ const ManageSongs = () => {
       if (!(error as any)?.isRateLimit) toast.error("Failed to load songs");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editSong) return;
+    const title = editTitle.trim();
+    const artist = editArtist.trim();
+    if (!title || !artist) {
+      toast.error("Title and artist are required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.editSong(editSong.id, title, artist);
+      toast.success("Song updated");
+      setEditSong(null);
+      loadSongs();
+    } catch (error) {
+      if (!(error as any)?.isRateLimit)
+        toast.error(
+          error instanceof Error ? error.message : "Failed to update song"
+        );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -146,46 +173,54 @@ const ManageSongs = () => {
           if (!open) setEditSong(null);
         }}
       >
-        <DialogContent>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-lg max-h-[85dvh] overflow-y-auto top-24 translate-y-0 sm:top-1/2 sm:-translate-y-1/2">
           <DialogHeader>
             <DialogTitle>Edit Song</DialogTitle>
             <DialogDescription>
-              Update title and artist. (No backend call yet)
+              Update the song's title and artist.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-2 mt-4">
-            <label className="text-sm font-medium">Title</label>
-            <Input
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-            />
-            <label className="text-sm font-medium">Artist</label>
-            <Input
-              value={editArtist}
-              onChange={(e) => setEditArtist(e.target.value)}
-            />
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit_title">Title</Label>
+              <Input
+                id="edit_title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                autoFocus
+                className="bg-background/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_artist">Artist</Label>
+              <Input
+                id="edit_artist"
+                value={editArtist}
+                onChange={(e) => setEditArtist(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveEdit();
+                }}
+                className="bg-background/50"
+              />
+            </div>
           </div>
 
-          <DialogFooter>
-            <div className="flex gap-2 ml-auto">
-              <Button variant="outline" onClick={() => setEditSong(null)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  // TODO: send update to server when endpoint is ready
-                  // payload: { id: editSong?.id, title: editTitle, artist_name: editArtist }
-                  setEditSong(null);
-                  toast.success(
-                    "Saved (locally) — implement API call on backend"
-                  );
-                  loadSongs();
-                }}
-              >
-                Save
-              </Button>
-            </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditSong(null)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={saving || !editTitle.trim() || !editArtist.trim()}
+              className="hero-gradient text-primary-foreground hover:opacity-90"
+            >
+              {saving ? "Saving..." : "Save"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
