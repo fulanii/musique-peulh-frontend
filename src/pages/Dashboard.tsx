@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import UploadSong from "@/components/UploadSong";
+import YoutubeUpload from "@/components/YoutubeUpload";
 import ManageSongs from "@/components/ManageSongs";
 import Analytics from "@/components/Analytics";
 import UserManagement from "@/components/UserManagement";
@@ -117,12 +118,7 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="youtube" className="mt-6">
-            {/* Backend not ready yet — placeholder */}
-            <div className="text-center py-16 card-gradient rounded-xl border border-border">
-              <Music2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <p className="text-xl font-semibold mb-2">YouTube Upload</p>
-              <p className="text-muted-foreground">Coming soon.</p>
-            </div>
+            <YoutubeUpload />
           </TabsContent>
 
           <TabsContent value="manage" className="mt-6">

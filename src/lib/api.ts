@@ -42,6 +42,14 @@ export interface Playlist {
   created_date: string;
 }
 
+export interface YoutubeData {
+  title: string | null;
+  duration: number | null;
+  duration_string: string | null;
+  channel: string | null;
+  thumbnail: string | null;
+}
+
 export interface AuthTokens {
   access: string;
   refresh: string;
@@ -403,6 +411,15 @@ class ApiService {
   async getSongsByTitle(title: string): Promise<Song[]> {
     return this.request<Song[]>(
       `${this.API_BASE_URL}/api/songs/titles/${encodeURIComponent(title)}/`,
+      {
+        headers: this.getHeaders(true),
+      }
+    );
+  }
+
+  async getYoutubeData(url: string): Promise<YoutubeData> {
+    return this.request<YoutubeData>(
+      `${this.API_BASE_URL}/api/songs/yt-download/?url=${encodeURIComponent(url)}`,
       {
         headers: this.getHeaders(true),
       }
