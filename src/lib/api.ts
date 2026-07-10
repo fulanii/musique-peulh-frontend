@@ -426,6 +426,18 @@ class ApiService {
     );
   }
 
+  async downloadFromYoutube(
+    url: string,
+    title: string,
+    artistName: string
+  ): Promise<{ detail: string }> {
+    return this.request(`${this.API_BASE_URL}/api/songs/yt-download/`, {
+      method: "POST",
+      headers: this.getHeaders(true),
+      body: JSON.stringify({ url, title, artist_name: artistName }),
+    });
+  }
+
   async editSong(
     songId: number,
     newTitle: string,

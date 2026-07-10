@@ -10,6 +10,7 @@ import { api, YoutubeData } from "@/lib/api";
 const YoutubeUpload = () => {
   const [url, setUrl] = useState("");
   const [fetching, setFetching] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [data, setData] = useState<YoutubeData | null>(null);
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
@@ -39,9 +40,33 @@ const YoutubeUpload = () => {
     }
   };
 
-  const handleDownload = () => {
-    // Backend not ready yet — not wired up.
-    toast.info("Download coming soon");
+  const handleDownload = async () => {
+    const t = title.trim();
+    const a = artist.trim();
+    if (!t || !a) {
+      toast.error("Title and artist are required");
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const res = await api.downloadFromYoutube(url.trim(), t, a);
+      toast.success(
+        res.detail || "Processing — the song will appear once uploaded."
+      );
+      // Reset the form; the upload finishes in the background.
+      setUrl("");
+      setData(null);
+      setTitle("");
+      setArtist("");
+    } catch (error) {
+      if (!(error as any)?.isRateLimit)
+        toast.error(
+          error instanceof Error ? error.message : "Failed to start download"
+        );
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -137,11 +162,20 @@ const YoutubeUpload = () => {
             </div>
             <Button
               onClick={handleDownload}
-              disabled={!title.trim() || !artist.trim()}
+              disabled={downloading || !title.trim() || !artist.trim()}
               className="w-full hero-gradient text-primary-foreground hover:opacity-90"
             >
-              <Download className="w-4 h-4 mr-2" />
-              Download &amp; Upload
+              {downloading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download &amp; Upload
+                </>
+              )}
             </Button>
           </div>
         </div>
