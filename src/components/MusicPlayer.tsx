@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Play,
   Pause,
@@ -12,6 +12,12 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { api, Song } from "@/lib/api";
 import { getDefaultCover } from "@/lib/defaultCover";
+
+// iPadOS reports itself as MacIntel, hence the touch-point check.
+const IS_IOS =
+  typeof navigator !== "undefined" &&
+  (/iP(hone|od|ad)/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 
 interface MusicPlayerProps {
   song: Song;
@@ -37,6 +43,15 @@ const MusicPlayer = ({
   const PREV_DOUBLE_CLICK_MS = 1200; // timeframe to go to previous track
 
   // Presigned-URL recovery: if the audio 403s (URL expired), refetch and resume.
+  // Latest-callback refs: MediaSession handlers are registered outside the
+  // render cycle, so they must not capture stale props.
+  const onNextRef = useRef(onNext);
+  const onPreviousRef = useRef(onPrevious);
+  const isPlayingRef = useRef(isPlaying);
+  onNextRef.current = onNext;
+  onPreviousRef.current = onPrevious;
+  isPlayingRef.current = isPlaying;
+
   const recoveringRef = useRef(false);
   const resumePositionRef = useRef<number | null>(null);
   const retryCountRef = useRef(0);
@@ -48,6 +63,27 @@ const MusicPlayer = ({
     }
   }, [volume]);
 
+  // iOS blocks playback that can't be traced to a user gesture. When that
+  // happens the promise rejects and the element stays silent, so drop the UI
+  // back to "paused" rather than showing a pause icon over silence.
+  const attemptPlay = (el: HTMLAudioElement) => {
+    const promise = el.play();
+    if (promise) {
+      promise.catch((err) => {
+        if (err?.name === "NotAllowedError") setIsPlaying(false);
+      });
+    }
+  };
+
+  // Safari re-locks a media element when its `src` changes, unless playback was
+  // (re)started inside the tap itself. Skip/back swap the src asynchronously,
+  // so we re-assert playback synchronously in the handler to keep the element
+  // unlocked for the track that's about to load.
+  const keepUnlockedForTrackChange = () => {
+    const el = audioRef.current;
+    if (el && el.src && isPlaying) attemptPlay(el);
+  };
+
   useEffect(() => {
     // Reset time when a new song is selected
     setCurrentTime(0);
@@ -58,69 +94,113 @@ const MusicPlayer = ({
     // Fetch a fresh short-lived pre-signed streaming URL for this song.
     // Guard against races if the user switches tracks before the request resolves.
     let cancelled = false;
-    setAudioSrc("");
     (async () => {
       try {
         const { url } = await api.getStreamUrl(song.id);
         if (cancelled) return;
         setAudioSrc(url);
-        if (audioRef.current) {
-          audioRef.current.load();
-        }
       } catch (error) {
         if (!cancelled && !(error as any)?.isRateLimit) {
           toast.error("Failed to load song");
         }
       }
     })();
-    // Update Media Session metadata (for OS media controls)
-    if ((navigator as any).mediaSession) {
-      try {
-        (navigator as any).mediaSession.metadata = new (
-          window as any
-        ).MediaMetadata({
-          title: song.title,
-          artist: song.artist_name,
-          album: "",
-          // Fall back to a branded default cover so OS media controls don't
-          // show the site favicon when a song has no cover image.
-          artwork: [
-            {
-              src: song.cover_image || getDefaultCover(),
-              sizes: "512x512",
-              type: "image/png",
-            },
-          ],
-        });
-
-        (navigator as any).mediaSession.setActionHandler("play", () =>
-          setIsPlaying(true)
-        );
-        (navigator as any).mediaSession.setActionHandler("pause", () =>
-          setIsPlaying(false)
-        );
-        (navigator as any).mediaSession.setActionHandler("previoustrack", () =>
-          // map to our previous-click logic: restart first, then prev on quick second click
-          handlePrevClick()
-        );
-        (navigator as any).mediaSession.setActionHandler("nexttrack", onNext);
-      } catch (e) {
-        // ignore if MediaSession not supported
-      }
-    }
 
     return () => {
       cancelled = true;
     };
   }, [song]);
 
+  // Point the element at the new URL only once we actually have one. Rendering
+  // src="" would make the browser resolve the page URL, fail, and fire `error`,
+  // which used to derail auto-advance at the end of a track.
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el || !audioSrc) return;
+    // assigning src starts the load; an explicit load() on top of it aborts the
+    // in-flight fetch on iOS and can cancel the pending play
+    el.src = audioSrc;
+    if (isPlayingRef.current) {
+      attemptPlay(el);
+    }
+  }, [audioSrc]);
+
+  // OS / lock-screen media controls.
+  //
+  // WebKit quirks drive the shape of this:
+  //  - iOS renders +/-10s seek buttons on the lock screen and ignores
+  //    `nexttrack`/`previoustrack`, so on iOS the seek actions are wired to
+  //    track navigation instead. The buttons still *look* like 10s skips, but
+  //    they change track, which is what people actually reach for. Elsewhere
+  //    the seek handlers stay cleared so real track buttons show up.
+  //  - iOS tends to discard a session configured before playback has begun, so
+  //    this is re-applied on the `playing` event as well as on song change.
+  const applyMediaSession = useCallback(() => {
+    const mediaSession = (navigator as any).mediaSession;
+    if (!mediaSession) return;
+
+    // Handlers first, and each isolated: a throw here used to abort the whole
+    // registration and leave iOS with its default seek buttons.
+    const handlers: [string, ((...args: any[]) => void) | null][] = [
+      ["play", () => setIsPlaying(true)],
+      ["pause", () => setIsPlaying(false)],
+      ["previoustrack", () => onPreviousRef.current()],
+      ["nexttrack", () => onNextRef.current()],
+      [
+        "seekbackward",
+        IS_IOS ? () => onPreviousRef.current() : null,
+      ],
+      ["seekforward", IS_IOS ? () => onNextRef.current() : null],
+      ["seekto", null],
+    ];
+    for (const [action, handler] of handlers) {
+      try {
+        mediaSession.setActionHandler(action, handler);
+      } catch {
+        // action unsupported in this browser
+      }
+    }
+
+    try {
+      mediaSession.metadata = new (window as any).MediaMetadata({
+        title: song.title,
+        artist: song.artist_name,
+        album: "",
+        // Fall back to a branded default cover so OS media controls don't
+        // show the site favicon when a song has no cover image.
+        artwork: [
+          {
+            src: song.cover_image || getDefaultCover(),
+            sizes: "512x512",
+            type: "image/png",
+          },
+        ],
+      });
+    } catch {
+      // metadata is cosmetic — never let it take the handlers down with it
+    }
+  }, [song, setIsPlaying]);
+
+  useEffect(() => {
+    applyMediaSession();
+  }, [applyMediaSession]);
+
+  // Keep the OS controls' play/pause icon in sync.
+  useEffect(() => {
+    const mediaSession = (navigator as any).mediaSession;
+    if (!mediaSession) return;
+    try {
+      mediaSession.playbackState = isPlaying ? "playing" : "paused";
+    } catch {
+      // ignore
+    }
+  }, [isPlaying]);
+
   // sync audio element when parent playback state changes
   useEffect(() => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || !audioRef.current.src) return;
     if (isPlaying) {
-      audioRef.current.play().catch(() => {
-        // ignore play promise errors (autoplay restrictions)
-      });
+      attemptPlay(audioRef.current);
     } else {
       audioRef.current.pause();
     }
@@ -186,9 +266,7 @@ const MusicPlayer = ({
       }
       // If the parent says we should be playing, start playback now that metadata is loaded
       if (isPlaying) {
-        audioRef.current.play().catch(() => {
-          // ignore play promise errors (autoplay restrictions)
-        });
+        attemptPlay(audioRef.current);
       }
     }
   };
@@ -196,7 +274,9 @@ const MusicPlayer = ({
   // Recover from an expired presigned URL (R2 returns 403) by fetching a fresh
   // one and resuming from the same position.
   const handleAudioError = async () => {
-    if (!song || !audioSrc || recoveringRef.current) return;
+    // No source yet (or already recovering) → nothing meaningful to retry.
+    if (!song || !audioSrc || !audioRef.current?.src) return;
+    if (recoveringRef.current) return;
     if (retryCountRef.current >= MAX_STREAM_RETRIES) return;
 
     recoveringRef.current = true;
@@ -207,9 +287,9 @@ const MusicPlayer = ({
     try {
       const { url } = await api.getStreamUrl(song.id);
       resumePositionRef.current = position;
-      setAudioSrc(url);
-      if (audioRef.current) audioRef.current.load();
       if (wasPlaying) setIsPlaying(true);
+      // the audioSrc effect re-points the element and resumes playback
+      setAudioSrc(url);
     } catch (error) {
       if (!(error as any)?.isRateLimit) {
         toast.error("Couldn't reload the track");
@@ -239,10 +319,12 @@ const MusicPlayer = ({
     <div className="fixed bottom-0 left-0 right-0 z-50 p-2 sm:p-4 pointer-events-none">
       <audio
         ref={audioRef}
-        src={audioSrc}
+        playsInline
+        preload="metadata"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
-        onEnded={onNext}
+        onEnded={() => onNextRef.current()}
+        onPlaying={applyMediaSession}
         onError={handleAudioError}
       />
 
@@ -292,7 +374,10 @@ const MusicPlayer = ({
             <Button
               variant="ghost"
               size="icon"
-              onClick={handlePrevClick}
+              onClick={() => {
+                keepUnlockedForTrackChange();
+                handlePrevClick();
+              }}
               className="w-9 h-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
               <SkipBack className="w-5 h-5" />
@@ -314,7 +399,10 @@ const MusicPlayer = ({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onNext}
+              onClick={() => {
+                keepUnlockedForTrackChange();
+                onNext();
+              }}
               className="w-9 h-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
               <SkipForward className="w-5 h-5" />

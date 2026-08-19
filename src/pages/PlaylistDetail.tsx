@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Play,
   Pause,
-  Shuffle,
   ListMusic,
   MoreVertical,
   Pencil,
@@ -40,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
+import ShuffleToggle from "@/components/ShuffleToggle";
 import SongRow from "@/components/SongRow";
 import { api, Playlist, Song } from "@/lib/api";
 
@@ -52,11 +52,9 @@ const PlaylistDetail = () => {
   const {
     currentSong,
     isPlaying,
-    shuffle,
     playSong,
     pauseSong,
     togglePlayList,
-    setShuffle,
   } = useMusicPlayer();
 
   const queryClient = useQueryClient();
@@ -236,16 +234,7 @@ const PlaylistDetail = () => {
             )}
           </Button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShuffle(!shuffle)}
-            aria-pressed={shuffle}
-            title={shuffle ? "Shuffle on" : "Shuffle off"}
-            className={shuffle ? "text-primary" : "text-muted-foreground"}
-          >
-            <Shuffle className="w-5 h-5" />
-          </Button>
+          <ShuffleToggle />
 
           {/* Playlist options */}
           <DropdownMenu>

@@ -35,6 +35,17 @@ const MusicPlayerContext = createContext<MusicPlayerContextType | undefined>(
   undefined
 );
 
+// Fisher-Yates. `first`, when given, is pinned to the head so turning shuffle on
+// (or shuffling a list that's already playing) never cuts off the current track.
+const shuffled = (list: Song[], first?: Song | null): Song[] => {
+  const rest = first ? list.filter((s) => s.id !== first.id) : [...list];
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+  return first && list.some((s) => s.id === first.id) ? [first, ...rest] : rest;
+};
+
 export const MusicPlayerProvider = ({
   children,
 }: {
@@ -49,6 +60,9 @@ export const MusicPlayerProvider = ({
   const [loading, setLoading] = useState(true);
   // The list the player advances through (a playlist or the full library).
   const [queue, setQueue] = useState<Song[]>([]);
+  // A permutation of the active list. Playback walks it in order, so each song
+  // plays exactly once per cycle instead of being drawn at random every skip.
+  const [shuffleOrder, setShuffleOrder] = useState<Song[]>([]);
 
   const loadSongs = useCallback(async () => {
     if (!isAuthenticated) {
@@ -75,11 +89,29 @@ export const MusicPlayerProvider = ({
   // The active playback list — the queue if one was set, else the full library.
   const activeList = () => (queue.length > 0 ? queue : songs);
 
+  // The order playback follows. The stored permutation is rebuilt on the fly if
+  // it has drifted from the active list (library finished loading, playlist
+  // edited) so we never advance through a stale or partial cycle.
+  const playbackOrder = (list: Song[], current: Song | null) => {
+    if (!shuffle) return list;
+    const matchesList =
+      shuffleOrder.length === list.length &&
+      shuffleOrder.every((s) => list.some((l) => l.id === s.id));
+    const holdsCurrent =
+      !current || shuffleOrder.some((s) => s.id === current.id);
+    if (matchesList && holdsCurrent) return shuffleOrder;
+    const rebuilt = shuffled(list, current);
+    setShuffleOrder(rebuilt);
+    return rebuilt;
+  };
+
   const playSong = (song: Song, list?: Song[]) => {
     // playing a single song should exit "Play All" mode
     setPlayAllActive(false);
     // scope subsequent next/previous to the list this song came from
-    setQueue(list && list.length ? list : [song]);
+    const scope = list && list.length ? list : [song];
+    setQueue(scope);
+    setShuffleOrder(shuffle ? shuffled(scope, song) : []);
     setCurrentSong(song);
     setIsPlaying(true);
   };
@@ -91,15 +123,14 @@ export const MusicPlayerProvider = ({
     }
   };
 
-  // Start playing a whole list from the top (or a random track if shuffling).
+  // Start playing a whole list from the top (or the top of a fresh shuffle).
   const playList = (list: Song[]) => {
     if (list.length === 0) return;
     setQueue(list);
     setPlayAllActive(true);
-    const start = shuffle
-      ? list[Math.floor(Math.random() * list.length)]
-      : list[0];
-    setCurrentSong(start);
+    const order = shuffle ? shuffled(list) : list;
+    setShuffleOrder(shuffle ? order : []);
+    setCurrentSong(order[0]);
     setIsPlaying(true);
   };
 
@@ -121,30 +152,40 @@ export const MusicPlayerProvider = ({
     const list = activeList();
     if (!currentSong || list.length === 0) return;
 
-    if (shuffle) {
-      // pick a random different song
-      if (list.length === 1) return;
-      let idx = Math.floor(Math.random() * list.length);
-      while (list[idx].id === currentSong.id) {
-        idx = Math.floor(Math.random() * list.length);
-      }
-      setCurrentSong(list[idx]);
+    const order = playbackOrder(list, currentSong);
+    const currentIndex = order.findIndex((s) => s.id === currentSong.id);
+
+    if (currentIndex < order.length - 1) {
+      setCurrentSong(order[currentIndex + 1]);
       setIsPlaying(true);
       return;
     }
 
-    const currentIndex = list.findIndex((s) => s.id === currentSong.id);
-    const nextIndex = (currentIndex + 1) % list.length;
-    setCurrentSong(list[nextIndex]);
+    // End of the cycle — every song has now played once.
+    if (shuffle) {
+      // Reshuffle for the next pass, and don't open it with the track that just
+      // finished, which would be an audible repeat across the seam.
+      let reshuffled = shuffled(list);
+      if (reshuffled.length > 1 && reshuffled[0].id === currentSong.id) {
+        reshuffled = [...reshuffled.slice(1), reshuffled[0]];
+      }
+      setShuffleOrder(reshuffled);
+      setCurrentSong(reshuffled[0]);
+      setIsPlaying(true);
+      return;
+    }
+
+    setCurrentSong(order[0]);
     setIsPlaying(true);
   };
 
   const previous = () => {
     const list = activeList();
     if (!currentSong || list.length === 0) return;
-    const currentIndex = list.findIndex((s) => s.id === currentSong.id);
-    const prevIndex = currentIndex <= 0 ? list.length - 1 : currentIndex - 1;
-    setCurrentSong(list[prevIndex]);
+    const order = playbackOrder(list, currentSong);
+    const currentIndex = order.findIndex((s) => s.id === currentSong.id);
+    const prevIndex = currentIndex <= 0 ? order.length - 1 : currentIndex - 1;
+    setCurrentSong(order[prevIndex]);
     setIsPlaying(true);
   };
 
@@ -153,15 +194,22 @@ export const MusicPlayerProvider = ({
 
   const handleSetShuffle = (newShuffle: boolean) => {
     setShuffle(newShuffle);
+    // Start a fresh cycle, keeping the current track at the head so flipping
+    // shuffle on doesn't interrupt what's playing.
+    setShuffleOrder(newShuffle ? shuffled(activeList(), currentSong) : []);
     toast(newShuffle ? t("shuffle_on") : t("shuffle_off"));
   };
 
-  const clearPlayer = () => {
+  // Stable identity: consumers put this in effect deps, so recreating it each
+  // render would re-trigger those effects endlessly.
+  const clearPlayer = useCallback(() => {
     setCurrentSong(null);
     setIsPlaying(false);
     setPlayAllActive(false);
-    setQueue([]);
-  };
+    // keep the same array when already empty so React can bail out of the update
+    setQueue((q) => (q.length === 0 ? q : []));
+    setShuffleOrder((o) => (o.length === 0 ? o : []));
+  }, []);
 
   return (
     <MusicPlayerContext.Provider
